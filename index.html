@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Web Vulnerability Scanner</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+</head>
+
+<body>
+
+  <!-- Background Grid -->
+  <div class="bg-grid"></div>
+
+  <!-- LANDSCAPE SCANNER CONTAINER -->
+  <div class="scanner-card">
+
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" onclick="toggleTheme()">🌗</button>
+
+    <!-- LEFT PANEL -->
+    <div class="left-panel">
+
+      <h1>🛡 Web Vulnerability Scanner</h1>
+      <p class="subtitle">Detection of Web Vulnerability</p>
+
+      <input id="url" placeholder="https://example.com">
+
+      <button onclick="startScan()">Start Scan</button>
+
+      <input 
+        id="search" 
+        placeholder="🔍 Search vulnerability..." 
+        oninput="searchOutput()"
+      >
+
+      <div class="progress hidden" id="progress">
+        <div class="progress-bar"></div>
+      </div>
+
+    </div>
+    <!-- END LEFT PANEL -->
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+
+      <!-- Terminal -->
+      <div class="terminal" id="output">
+        Waiting for scan...
+      </div>
+
+      <!-- Chart Buttons -->
+      <div class="chart-buttons">
+        <button onclick="showBarChart()">📊 Bar Graph</button>
+        <button onclick="showPieChart()">🥧 Pie Chart</button>
+      </div>
+
+      <!-- Charts -->
+      <div id="barContainer" class="chart-container hidden">
+        <canvas id="owaspBar"></canvas>
+      </div>
+
+      <div id="pieContainer" class="chart-container hidden">
+        <canvas id="owaspPie"></canvas>
+      </div>
+
+      <!-- ONLY DOWNLOAD BUTTON -->
+      <<button onclick="downloadPDF()">📄 Download PDF</button>
+
+        </button>
+      </div>
+
+    </div>
+    <!-- END RIGHT PANEL -->
+
+  </div>
+
+  <!-- JavaScript -->
+  <script src="script.js"></script>
+
+</body>
+</html>

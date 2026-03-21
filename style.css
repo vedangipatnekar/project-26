@@ -1,0 +1,234 @@
+/* ================================
+   THEME VARIABLES
+================================ */
+:root {
+  --bg-main: radial-gradient(circle at top, #0a2a43, #020b18);
+  --card-bg: #07182f;
+  --text-color: #ffffff;
+  --subtitle-color: #9bdcff;
+  --terminal-bg: #000000;
+  --terminal-text: #00ff9d;
+}
+
+body.light {
+  --bg-main: #f1f5f9;
+  --card-bg: #ffffff;
+  --text-color: #020617;
+  --subtitle-color: #2563eb;
+  --terminal-bg: #020617;
+  --terminal-text: #22c55e;
+}
+
+/* ================================
+   GLOBAL RESET
+================================ */
+* {
+  box-sizing: border-box;
+  font-family: Consolas, monospace;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  background: var(--bg-main);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-color);
+}
+
+/* ================================
+   BACKGROUND GRID
+================================ */
+.bg-grid {
+  position: fixed;
+  inset: 0;
+  background:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ================================
+   LANDSCAPE CONTAINER
+================================ */
+.scanner-card {
+  background: var(--card-bg);
+  width: 90%;
+  max-width: 1100px;
+  height: 600px;
+  padding: 30px;
+  border-radius: 22px;
+  box-shadow: 0 0 40px rgba(0,160,255,0.45);
+  position: relative;
+
+  display: flex;
+  gap: 25px;
+}
+
+/* ================================
+   LEFT PANEL (Controls)
+================================ */
+.left-panel {
+  width: 40%;
+  display: flex;
+  flex-direction: column;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--subtitle-color);
+  margin-bottom: 15px;
+}
+
+input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  border: none;
+  margin-bottom: 12px;
+}
+
+button {
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 12px;
+  background: #00ff9d;
+}
+
+button:hover {
+  background: #00e58c;
+}
+
+/* ================================
+   RIGHT PANEL (Terminal)
+================================ */
+.right-panel {
+  width: 60%;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal {
+  flex: 1;
+  background: var(--terminal-bg);
+  color: var(--terminal-text);
+  padding: 15px;
+  border-radius: 12px;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  scroll-behavior: smooth;
+}
+
+/* Scrollbar */
+.terminal::-webkit-scrollbar {
+  width: 8px;
+}
+
+.terminal::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 157, 0.5);
+  border-radius: 4px;
+}
+
+/* ================================
+   THEME TOGGLE
+================================ */
+.theme-toggle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* ================================
+   PROGRESS BAR
+================================ */
+.progress {
+  height: 8px;
+  background: #0e2238;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  background: #00ff9d;
+  animation: loading 2s infinite;
+}
+
+@keyframes loading {
+  0% { width: 10%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
+}
+/* ================================
+   EXTRA ACTIONS
+================================ */
+.extra-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.extra-actions button {
+  flex: 1;
+}
+
+/* ================================
+   CHARTS
+================================ */
+.charts {
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
+  height: 220px;
+}
+
+.chart-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.chart-container {
+  height: 300px;
+}
+
+.hidden {
+  display: none;
+}
+
+.charts canvas {
+  flex: 1;
+}
+
+/* ================================
+   PDF PREVIEW
+================================ */
+.pdf-preview {
+  margin-top: 15px;
+  height: 250px;
+}
+
+.pdf-preview iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 10px;
+}
+
+/* Hide Utility */
+.hidden {
+  display: none;
+}
