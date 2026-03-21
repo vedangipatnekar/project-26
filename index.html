@@ -2,86 +2,108 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Web Vulnerability Scanner</title>
-
-  <!-- Styles -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel | Web Vulnerability Scanner</title>
   <link rel="stylesheet" href="style.css">
-
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 </head>
-
 <body>
 
-  <!-- Background Grid -->
-  <div class="bg-grid"></div>
+  <div class="bg-blur"></div>
 
-  <!-- LANDSCAPE SCANNER CONTAINER -->
-  <div class="scanner-card">
-
-    <!-- Theme Toggle -->
-    <button class="theme-toggle" onclick="toggleTheme()">🌗</button>
-
-    <!-- LEFT PANEL -->
-    <div class="left-panel">
-
-      <h1>🛡 Web Vulnerability Scanner</h1>
-      <p class="subtitle">Detection of Web Vulnerability</p>
-
-      <input id="url" placeholder="https://example.com">
-
-      <button onclick="startScan()">Start Scan</button>
-
-      <input 
-        id="search" 
-        placeholder="🔍 Search vulnerability..." 
-        oninput="searchOutput()"
-      >
-
-      <div class="progress hidden" id="progress">
-        <div class="progress-bar"></div>
+  <main class="app-container">
+    <header class="top-nav">
+      <div class="logo">
+        <span class="shield-icon">🛡️</span>
+        <span class="brand">Sentinel<span class="dot">.</span></span>
       </div>
+      <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle Theme">
+        <span class="icon-moon">🌙</span>
+        <span class="icon-sun">☀️</span>
+      </button>
+    </header>
 
-    </div>
-    <!-- END LEFT PANEL -->
+    <div class="dashboard-grid">
+      <!-- CONTROL PANEL -->
+      <section class="panel control-panel">
+        <div class="panel-header">
+          <h2>Security Audit</h2>
+          <p>Initialize a new deep scan</p>
+        </div>
 
-    <!-- RIGHT PANEL -->
-    <div class="right-panel">
+        <div class="input-group">
+          <label for="url">Target URL</label>
+          <div class="input-wrapper">
+            <input id="url" type="url" placeholder="https://testphp.vulnweb.com" required>
+          </div>
+        </div>
 
-      <!-- Terminal -->
-      <div class="terminal" id="output">
-        Waiting for scan...
-      </div>
-
-      <!-- Chart Buttons -->
-      <div class="chart-buttons">
-        <button onclick="showBarChart()">📊 Bar Graph</button>
-        <button onclick="showPieChart()">🥧 Pie Chart</button>
-      </div>
-
-      <!-- Charts -->
-      <div id="barContainer" class="chart-container hidden">
-        <canvas id="owaspBar"></canvas>
-      </div>
-
-      <div id="pieContainer" class="chart-container hidden">
-        <canvas id="owaspPie"></canvas>
-      </div>
-
-      <!-- ONLY DOWNLOAD BUTTON -->
-      <<button onclick="downloadPDF()">📄 Download PDF</button>
-
+        <button id="scanBtn" class="primary-btn" onclick="startScan()">
+          <span class="btn-text">Initialize Scan</span>
         </button>
-      </div>
 
+        <div class="divider"><span>Analysis Tools</span></div>
+
+        <div class="input-group">
+          <input id="search" placeholder="🔍 Filter logs..." oninput="searchOutput()">
+        </div>
+
+        <div class="progress-container hidden" id="progress">
+          <div class="progress-labels">
+            <span>Analyzing...</span>
+            <span id="percentText">Wait...</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RESULTS PANEL -->
+      <section class="panel results-panel">
+        <div class="panel-tabs">
+          <button id="tabBtnTerminal" class="tab-btn active" onclick="switchTab('terminal')">Log Output</button>
+          <button id="tabBtnVisuals" class="tab-btn" onclick="switchTab('visuals')">Analytics</button>
+        </div>
+
+        <div id="tab-terminal" class="tab-content">
+          <div class="terminal-wrapper">
+            <div class="terminal-header">
+              <div class="dots"><span></span><span></span><span></span></div>
+              <span class="label">sentinel_scan.log</span>
+            </div>
+            <div class="terminal-body" id="output">Waiting for target input...</div>
+          </div>
+        </div>
+
+        <div id="tab-visuals" class="tab-content hidden">
+          <div class="analytics-header">
+            <div class="toggle-group">
+              <button class="toggle-btn active" onclick="toggleChartView('bar')">📊 Bar Graph</button>
+              <button class="toggle-btn" onclick="toggleChartView('pie')">🥧 Pie Chart</button>
+            </div>
+          </div>
+          <div class="chart-viewport">
+            <div id="barWrapper" class="chart-wrapper-inner">
+              <canvas id="owaspBar"></canvas>
+            </div>
+            <div id="pieWrapper" class="chart-wrapper-inner hidden">
+              <canvas id="owaspPie"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <footer class="panel-footer">
+          <button class="secondary-btn" onclick="downloadPDF()">
+            <span class="icon">📄</span> Export Formal Report (PDF)
+          </button>
+        </footer>
+      </section>
     </div>
-    <!-- END RIGHT PANEL -->
+  </main>
 
-  </div>
-
-  <!-- JavaScript -->
   <script src="script.js"></script>
-
 </body>
 </html>

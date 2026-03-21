@@ -1,7 +1,9 @@
 import requests
-import time   # ✅ ADDED
+import time
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # ======================================================
 # OWASP TOP 10 (2021) MAPPING
@@ -20,23 +22,20 @@ OWASP_MAP = {
 }
 
 # ======================================================
-# DUPLICATE SUPPRESSION COUNTER (✅ ADDED)
+# GLOBAL COUNTERS
 # ======================================================
 DUPLICATE_SUPPRESSED = 0
 
 # ======================================================
-# HELPER FUNCTION – PREVENT DUPLICATES
+# HELPER FUNCTIONS
 # ======================================================
 def add_issue(issues, issue):
     global DUPLICATE_SUPPRESSED
     if issue not in issues:
         issues.append(issue)
     else:
-        DUPLICATE_SUPPRESSED += 1   # ✅ COUNT DUPLICATES
+        DUPLICATE_SUPPRESSED += 1
 
-# ======================================================
-# PRIORITY SYMBOL FUNCTION
-# ======================================================
 def get_priority_symbol(confidence):
     return {
         "HIGH": "🔴",
@@ -44,8 +43,29 @@ def get_priority_symbol(confidence):
         "LOW": "🟢"
     }.get(confidence, "⚪")
 
+def create_session():
+    """Creates a requests session with retry logic and browser-like headers."""
+    session = requests.Session()
+    
+    # Set a real User-Agent to avoid being blocked by Heroku/Cloudflare
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+    })
+
+    retry = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[500, 502, 503, 504]
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
+
 # ======================================================
-# 🧠 INTELLIGENT CONFIDENCE SCORING (RULE-BASED ML-LIKE)
+# 🧠 INTELLIGENT CONFIDENCE SCORING
 # ======================================================
 def intelligent_confidence_scoring(issue, url, response):
     score = 0
@@ -83,13 +103,12 @@ def intelligent_confidence_scoring(issue, url, response):
         issue["confidence"] = "LOW"
 
     return issue
-# ======================================================
-# 🔎 INJECTION TESTING MODULE (Improper Input Validation)
-# ======================================================
-def injection_test(url):
-    issues = []
 
-    # Common injection payloads (SAFE & BASIC)
+# ======================================================
+# 🔎 INJECTION TESTING MODULE
+# ======================================================
+def injection_test(url, session):
+    issues = []
     payloads = [
         "' OR '1'='1",
         "\" OR \"1\"=\"1",
@@ -101,9 +120,8 @@ def injection_test(url):
     for payload in payloads:
         try:
             test_url = url + "?test=" + payload
-            response = requests.get(test_url, timeout=5)
+            response = session.get(test_url, timeout=5)
 
-            # Heuristic checks (non-destructive)
             if payload in response.text:
                 add_issue(issues, {
                     "name": "Improper Input Validation (Injection)",
@@ -125,12 +143,9 @@ def injection_test(url):
                     "source": "Dynamic"
                 })
                 break
-
         except:
             continue
-
     return issues
-
 
 # ======================================================
 # STATIC ANALYSIS
@@ -179,7 +194,7 @@ def static_scan(url, response):
 # ======================================================
 # DYNAMIC ANALYSIS
 # ======================================================
-def dynamic_scan(url, response):
+def dynamic_scan(url, response, session):
     issues = []
 
     if not url.startswith("https://"):
@@ -216,9 +231,10 @@ def dynamic_scan(url, response):
             "source": "Dynamic"
         })
 
+    # Basic XSS Reflector test
     try:
         payload = "<script>alert(1)</script>"
-        test = requests.get(url, params={"x": payload}, timeout=5)
+        test = session.get(url, params={"x": payload}, timeout=5)
         if payload in test.text and "text/html" in test.headers.get("Content-Type", ""):
             add_issue(issues, {
                 "name": "Reflected XSS",
@@ -238,8 +254,8 @@ def dynamic_scan(url, response):
 # ======================================================
 def extended_dynamic_scan(url, response):
     issues = []
-
     cookies = response.headers.get("Set-Cookie", "")
+    
     if cookies:
         if "HttpOnly" not in cookies:
             add_issue(issues, {
@@ -274,32 +290,45 @@ def extended_dynamic_scan(url, response):
     return issues
 
 # ======================================================
-# MAIN SCANNER
+# MAIN SCANNER ENGINE
 # ======================================================
 def scan_website(url):
     global DUPLICATE_SUPPRESSED
+    DUPLICATE_SUPPRESSED = 0
 
     print("\n🔍 Scanning:", url)
     print("=" * 60)
 
-    scan_start = time.time()  # ✅ ADDED
+    scan_start = time.time()
+    session = create_session()
 
     try:
-        response = requests.get(url, timeout=10)
+        response = session.get(url, timeout=15)
+        # Check if the site returned a 503 or other error
+        if response.status_code == 503:
+            print("❌ Error: Site returned 503 (Service Unavailable). The target is likely overloaded or blocking automated scans.")
+            return
+        response.raise_for_status()
     except Exception as e:
-        print("❌ Error:", e)
+        print(f"❌ Connection Error: {str(e)}")
+        print("\nTip: If you're scanning Juice Shop, it frequently goes down or blocks scripts. Try a local URL or testphp.vulnweb.com.")
         return
 
-    s1 = time.time()
+    # Phase 1: Static Scan
     static_issues = static_scan(url, response)
-    s2 = time.time()
-    dynamic_issues = dynamic_scan(url, response)
-    s3 = time.time()
+    
+    # Phase 2: Dynamic Scan
+    dynamic_issues = dynamic_scan(url, response, session)
+    
+    # Phase 3: Extended Dynamic
     extended_issues = extended_dynamic_scan(url, response)
-    s4 = time.time()
+    
+    # Phase 4: Injection Testing
+    inj_issues = injection_test(url, session)
 
-    all_issues = static_issues + dynamic_issues + extended_issues
+    all_issues = static_issues + dynamic_issues + extended_issues + inj_issues
 
+    # Phase 5: Scoring and Sorting
     for issue in all_issues:
         intelligent_confidence_scoring(issue, url, response)
 
@@ -315,22 +344,20 @@ def scan_website(url):
     false_positives = len([i for i in all_issues if i["confidence"] == "LOW"])
     false_positive_rate = (false_positives / total * 100) if total else 0
 
-    
     print("HIGH : 🔴")
     print("MEDIUM : 🟠")
     print("LOW : 🟢")
     
-    
     print("\n📊 SCAN SUMMARY")
     print("=" * 60)
     print(f"Total Threats Found        : {total}")
-    print(f"Duplicate Risks Suppressed : {DUPLICATE_SUPPRESSED}")  # ✅ ADDED
-    print(f"False Positives (LOW)     : {false_positives}")
-    print(f"False Positive Rate       : {false_positive_rate:.2f}%")
+    print(f"Duplicate Risks Suppressed : {DUPLICATE_SUPPRESSED}")
+    print(f"False Positives (LOW)      : {false_positives}")
+    print(f"False Positive Rate        : {false_positive_rate:.2f}%")
 
     print("\n⏱️ SCAN PERFORMANCE METRICS")
     print("=" * 60)
-    print(f"Total Scan Time        : {time.time() - scan_start:.2f} seconds")
+    print(f"Total Scan Time            : {time.time() - scan_start:.2f} seconds")
 
     print("\n📚 OWASP TOP 10 SUMMARY")
     print("=" * 60)
@@ -345,9 +372,7 @@ def scan_website(url):
         print(f"Risk       : {issue['risk']}")
         print(f"Resolution : {issue['resolution']}")
         print(f"Source     : {issue['source']}")
-# ======================================================
-# RUN
-# ======================================================
+
 if __name__ == "__main__":
     target = input("Enter website URL (https://example.com): ")
     scan_website(target)
