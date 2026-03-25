@@ -104,6 +104,47 @@ def intelligent_confidence_scoring(issue, url, response):
 
     return issue
 
+
+"""
+i am also add this code where it show low false positive,
+if you want just remove the comment and delete the upper function [intelligent_confidence_scoring].
+
+def intelligent_confidence_scoring(issue, url, response):
+    score = 0
+
+    # Base confidence from the test itself
+    if issue["confidence"] == "HIGH":
+        score += 2  # Reduced from 3
+    elif issue["confidence"] == "MEDIUM":
+        score += 1  # Reduced from 2
+
+    # Environmental checks
+    if url.startswith("https://"):
+        score += 1
+
+    # Specific vulnerability confirmation
+    if "XSS" in issue["name"] and "<script>" in response.text:
+        score += 2
+
+    if "Missing Security Header" in issue["name"]:
+        score += 1 # Reduced from 2
+
+    # Penalty for Static analysis (often higher FP rate)
+    if issue["source"] == "Static":
+        score -= 2 # Increased penalty from -1
+
+    # --- UPDATED THRESHOLDS ---
+    # We increase the requirements so most items fall into "LOW"
+    if score >= 8: # Was 6
+        issue["confidence"] = "HIGH"
+    elif score >= 6: # Was 4
+        issue["confidence"] = "MEDIUM"
+    else:
+        issue["confidence"] = "LOW"
+
+    return issue
+"""
+
 # ======================================================
 # 🔎 INJECTION TESTING MODULE
 # ======================================================

@@ -9,6 +9,17 @@ window.onload = () => {
   if (theme === "light") document.body.classList.add("light");
 };
 
+document.addEventListener("DOMContentLoaded", () => {
+  const urlInput = document.getElementById("url");
+  
+  urlInput.addEventListener("keypress", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault(); // Prevent form submission if inside a form
+      startScan();
+    }
+  });
+});
+
 // ─── Tab Switching ───
 function switchTab(tab) {
   document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
