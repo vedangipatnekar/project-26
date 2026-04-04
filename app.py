@@ -19,7 +19,7 @@ from reportlab.platypus import (
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
 # We will import our upgraded scanner next
-import scanner_pro 
+import scanner
 
 # Added static_folder configuration to serve recordings and live frames
 app = Flask(__name__, static_folder='static')
@@ -86,7 +86,7 @@ def scan():
     try:
         sys.stdout = buffer
         # Pass scan_id to the upgraded scanner for video naming
-        video_filename = scanner_pro.scan_website(url, scan_id)
+        video_filename = scanner.scan_website(url, scan_id)
         LAST_REPORT_RAW = buffer.getvalue()
         
         # Parse the report to get summary details for history
