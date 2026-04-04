@@ -19,6 +19,12 @@
         <span class="shield-icon">🛡️</span>
         <span class="brand">Sentinel<span class="dot">.</span></span>
       </div>
+      
+      <div class="nav-links">
+        <a href="index.html" class="nav-link active">Scanner</a>
+        <a href="history.html" class="nav-link">History</a>
+      </div>
+
       <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle Theme">
         <span class="icon-moon">🌙</span>
         <span class="icon-sun">☀️</span>
@@ -63,18 +69,40 @@
 
       <!-- RESULTS PANEL -->
       <section class="panel results-panel">
-        <div class="panel-tabs">
-          <button id="tabBtnTerminal" class="tab-btn active" onclick="switchTab('terminal')">Log Output</button>
-          <button id="tabBtnVisuals" class="tab-btn" onclick="switchTab('visuals')">Analytics</button>
+        
+        <!-- NEW HEADER LAYOUT: Tabs on the left, PDF Download button on the right -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div class="panel-tabs" style="margin-bottom: 0; flex: 1;">
+            <button id="tabBtnTerminal" class="tab-btn active" onclick="switchTab('terminal')">Log Output</button>
+            <button id="tabBtnVisuals" class="tab-btn" onclick="switchTab('visuals')">Analytics</button>
+          </div>
+          <button class="secondary-btn" onclick="downloadPDF()" style="width: auto; margin-top: 0; margin-left: 16px; padding: 9px 16px; transform: translateY(0);">
+            <span class="icon">📄</span> Export Report
+          </button>
         </div>
 
         <div id="tab-terminal" class="tab-content">
-          <div class="terminal-wrapper">
-            <div class="terminal-header">
-              <div class="dots"><span></span><span></span><span></span></div>
-              <span class="label">sentinel_scan.log</span>
+          <div class="monitor-grid">
+            <div class="terminal-wrapper">
+              <div class="terminal-header">
+                <div class="dots"><span></span><span></span><span></span></div>
+                <span class="label">sentinel_scan.log</span>
+              </div>
+              <div class="terminal-body" id="output">Waiting for target input...</div>
             </div>
-            <div class="terminal-body" id="output">Waiting for target input...</div>
+            
+            <div class="browser-monitor">
+              <div class="terminal-header">
+                <span class="label" style="color: #10b981;">● LIVE_FEED</span>
+              </div>
+              <div class="browser-screen">
+                 <img id="liveFeed" src="" alt="Live Scanner View" class="hidden">
+                 <div id="liveFeedPlaceholder" class="feed-placeholder">
+                    <span class="icon">📷</span>
+                    <p>Awaiting scan initialization...</p>
+                 </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -94,12 +122,8 @@
             </div>
           </div>
         </div>
-
-        <footer class="panel-footer">
-          <button class="secondary-btn" onclick="downloadPDF()">
-            <span class="icon">📄</span> Export Formal Report (PDF)
-          </button>
-        </footer>
+        
+        <!-- Removed the old bottom footer entirely -->
       </section>
     </div>
   </main>

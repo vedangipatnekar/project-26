@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel | Security Archives</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="bg-blur"></div>
+  <main class="app-container">
+    
+    <header class="top-nav">
+      <div class="logo">
+        <span class="shield-icon">🛡️</span>
+        <span class="brand">Sentinel<span class="dot">.</span></span>
+      </div>
+      <div class="nav-links">
+        <a href="index.html" class="nav-link">Scanner</a>
+        <a href="history.html" class="nav-link active">History</a>
+      </div>
+      <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle Theme">
+        <span class="icon-moon">🌙</span>
+        <span class="icon-sun">☀️</span>
+      </button>
+    </header>
+
+    <div class="dashboard-grid" style="grid-template-columns: 350px 1fr;">
+      
+      <!-- History List Panel -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Scan Archives</h2>
+          <p>Past vulnerability reports & recordings</p>
+        </div>
+        <div class="history-list" id="historyList">
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Loading history...</p>
+        </div>
+      </section>
+
+      <!-- Replay Panel -->
+      <section class="panel results-panel">
+        
+        <!-- HEADER WITH NEW DOWNLOAD BUTTON -->
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <h2>Session Replay</h2>
+            <p id="replayMeta">Select a scan to watch the recording</p>
+          </div>
+          <button id="downloadHistoryBtn" class="secondary-btn hidden" onclick="downloadHistoryPDF()" style="width: auto; margin: 0; padding: 10px 16px; transform: none; visibility: visible; opacity: 1; pointer-events: auto;">
+            <span class="icon">📄</span> Download PDF
+          </button>
+        </div>
+        
+        <div class="browser-monitor" style="height: 450px;">
+          <div class="terminal-header">
+            <span class="label" style="color: #3b82f6;">▶ SESSION_REPLAY.webm</span>
+          </div>
+          <div class="browser-screen">
+            <video id="videoPlayer" controls class="hidden" style="width:100%; height:100%; outline:none; background:#000;"></video>
+            <div id="videoPlaceholder" class="feed-placeholder">
+              <span class="icon">📼</span>
+              <p>No video selected</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider" style="margin-top: 20px;"><span>Raw Log Output</span></div>
+        
+        <div class="terminal-wrapper" style="height: 250px;">
+          <div class="terminal-body" id="replayLog" style="color: var(--text-muted);">
+            Logs will appear here...
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+  
+  <script>
+    let currentActiveScan = null; // Store the currently selected scan data for PDF generation
+
+    document.addEventListener("DOMContentLoaded", loadHistory);
+
+    if (localStorage.getItem("theme") === "light") {
+      document.body.classList.add("light");
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle("light");
+      localStorage.setItem("theme", document.body.classList.contains("light") ? "light" : "dark");
+    }
+
+    async function loadHistory() {
+      const list = document.getElementById("historyList");
+      try {
+        const res = await fetch("http://127.0.0.1:5001/api/history");
+        const data = await res.json();
+        
+        if (data.length === 0) {
+          list.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem;">No scans recorded yet.</p>`;
+          return;
+        }
+
+        list.innerHTML = "";
+        data.forEach(scan => {
+          const card = document.createElement("div");
+          card.className = "history-card";
+          
+          card.innerHTML = `
+            <div class="card-info" style="cursor: pointer;">
+              <div class="card-title">${scan.url}</div>
+              <div class="card-meta">${scan.date} • <span style="color: #ef4444;">${scan.threats} Threats</span></div>
+            </div>
+            <button class="delete-btn" title="Delete record">🗑️</button>
+          `;
+
+          card.querySelector('.card-info').addEventListener('click', () => playVideo(scan));
+          card.querySelector('.delete-btn').addEventListener('click', () => deleteScan(scan.id));
+          
+          list.appendChild(card);
+        });
+      } catch (err) {
+        list.innerHTML = `<p style="color: #ef4444; font-size: 0.9rem;">Failed to load history. Ensure app.py is running.</p>`;
+      }
+    }
+
+    function playVideo(scan) {
+      currentActiveScan = scan; // Save data for the PDF download
+      
+      const player = document.getElementById("videoPlayer");
+      const placeholder = document.getElementById("videoPlaceholder");
+      const log = document.getElementById("replayLog");
+      const meta = document.getElementById("replayMeta");
+      const downloadBtn = document.getElementById("downloadHistoryBtn");
+
+      placeholder.classList.add("hidden");
+      player.classList.remove("hidden");
+      downloadBtn.classList.remove("hidden"); // Reveal the PDF download button
+      
+      player.src = `http://127.0.0.1:5001/static/history/${scan.video}`;
+      player.play();
+
+      log.textContent = scan.report || "No logs saved.";
+      meta.textContent = `Target: ${scan.url}`;
+    }
+
+    // NEW FUNCTION: Sends the specific history report string back to the server to make a PDF
+    async function downloadHistoryPDF() {
+      if (!currentActiveScan) return;
+      
+      try {
+        const response = await fetch("http://127.0.0.1:5001/download-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            report_raw: currentActiveScan.report, // Pass the explicit report text for this past scan
+            barChart: null, 
+            pieChart: null 
+          })
+        });
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Sentinel_History_${currentActiveScan.id}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+        } else {
+          const err = await response.json();
+          alert("PDF Error: " + (err.error || "Unknown error"));
+        }
+      } catch (err) {
+        alert("PDF generation failed. Ensure app.py is running.");
+        console.error(err);
+      }
+    }
+
+    async function deleteScan(id) {
+      if (!confirm("Are you sure you want to delete this scan and its video?")) return;
+      
+      try {
+        await fetch(`http://127.0.0.1:5001/api/history/${id}`, { method: "DELETE" });
+        
+        const player = document.getElementById("videoPlayer");
+        if (player.src.includes(id)) {
+           player.classList.add("hidden");
+           document.getElementById("videoPlaceholder").classList.remove("hidden");
+           document.getElementById("downloadHistoryBtn").classList.add("hidden");
+           player.src = "";
+           document.getElementById("replayLog").textContent = "Logs will appear here...";
+           document.getElementById("replayMeta").textContent = "Select a scan to watch the recording";
+           currentActiveScan = null;
+        }
+        
+        loadHistory(); 
+      } catch (err) {
+        alert("Error deleting scan.");
+      }
+    }
+  </script>
+</body>
+</html>

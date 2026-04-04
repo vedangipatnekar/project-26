@@ -1,6 +1,7 @@
 let fullReport = "";
 let barChart = null;
 let pieChart = null;
+let liveFeedInterval = null;
 
 const CHART_COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
 
@@ -12,12 +13,14 @@ window.onload = () => {
 document.addEventListener("DOMContentLoaded", () => {
   const urlInput = document.getElementById("url");
   
-  urlInput.addEventListener("keypress", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault(); // Prevent form submission if inside a form
-      startScan();
-    }
-  });
+  if (urlInput) {
+      urlInput.addEventListener("keypress", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault(); // Prevent form submission if inside a form
+          startScan();
+        }
+      });
+  }
 });
 
 // ─── Tab Switching ───
@@ -81,9 +84,25 @@ async function startScan() {
 
   output.textContent =
     `[SYSTEM] Booting scanning engine...\n` +
-    `[SYSTEM] Loading scanner.py modules...\n` +
-    `[SYSTEM] Initializing request session...\n` +
+    `[SYSTEM] Loading scanner_pro.py modules...\n` +
+    `[SYSTEM] Initializing Playwright browser...\n` +
     `[SYSTEM] Connecting to target: ${url}\n`;
+
+  // Setup and start Live Feed polling
+  const liveFeedImg = document.getElementById("liveFeed");
+  const placeholder = document.getElementById("liveFeedPlaceholder");
+  
+  if (liveFeedImg && placeholder) {
+      liveFeedImg.classList.remove("hidden");
+      placeholder.classList.add("hidden");
+
+      if (liveFeedInterval) clearInterval(liveFeedInterval);
+
+      // Fetch the latest screenshot every 1 second
+      liveFeedInterval = setInterval(() => {
+        liveFeedImg.src = `http://127.0.0.1:5001/static/live/live_view.png?t=${new Date().getTime()}`;
+      }, 1000);
+  }
 
   try {
     const res = await fetch("http://127.0.0.1:5001/scan", {
@@ -96,15 +115,18 @@ async function startScan() {
     const data = await res.json();
     fill.style.width = "100%";
 
+    if (liveFeedInterval) clearInterval(liveFeedInterval);
+
     if (data.error) {
       output.textContent += `\n[FATAL ERROR] ${data.error}`;
     } else {
       fullReport = data.report;
       output.textContent = fullReport;
-      // ✅ Reveal Export button only after a successful scan
-      document.querySelector('.secondary-btn').classList.add('visible');
+      const exportBtn = document.querySelector('.secondary-btn');
+      if (exportBtn) exportBtn.classList.add('visible');
     }
   } catch (err) {
+    if (liveFeedInterval) clearInterval(liveFeedInterval);
     output.textContent +=
       `\n[FATAL ERROR] Backend (app.py) not responding on port 5001.\n` +
       `[TIP] Run: python app.py`;

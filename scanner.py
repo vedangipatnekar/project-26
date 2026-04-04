@@ -1,9 +1,9 @@
-import requests
 import time
+import os
+import re
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 # ======================================================
 # OWASP TOP 10 (2021) MAPPING
@@ -22,16 +22,21 @@ OWASP_MAP = {
 }
 
 # ======================================================
-# GLOBAL COUNTERS
+# GLOBAL COUNTERS & PATHS
 # ======================================================
 DUPLICATE_SUPPRESSED = 0
+LIVE_VIEW_PATH = os.path.join("static", "live", "live_view.png")
+
+# Ensure directories exist
+os.makedirs(os.path.join("static", "history"), exist_ok=True)
+os.makedirs(os.path.join("static", "live"), exist_ok=True)
 
 # ======================================================
 # HELPER FUNCTIONS
 # ======================================================
 def add_issue(issues, issue):
     global DUPLICATE_SUPPRESSED
-    if issue not in issues:
+    if not any(i["name"] == issue["name"] and i["source"] == issue["source"] for i in issues):
         issues.append(issue)
     else:
         DUPLICATE_SUPPRESSED += 1
@@ -43,112 +48,71 @@ def get_priority_symbol(confidence):
         "LOW": "🟢"
     }.get(confidence, "⚪")
 
-def create_session():
-    """Creates a requests session with retry logic and browser-like headers."""
-    session = requests.Session()
-    
-    # Set a real User-Agent to avoid being blocked by Heroku/Cloudflare
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-    })
+def take_snapshot(page):
+    """Takes a live screenshot for the frontend dashboard to display."""
+    try:
+        page.screenshot(path=LIVE_VIEW_PATH)
+    except Exception:
+        pass 
 
-    retry = Retry(
-        total=3,
-        backoff_factor=1,
-        status_forcelist=[500, 502, 503, 504]
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount("http://", adapter)
-    session.mount("https://", adapter)
-    return session
+def show_hud(page, message):
+    """
+    Injects a visual overlay (HUD) into the DOM.
+    Since headless browsers don't record the URL bar, this burns 
+    the current action directly into the video recording.
+    """
+    safe_message = message.replace("\\", "\\\\").replace("'", "\\'").replace('"', '\\"')
+    js_code = f"""
+    (() => {{
+        try {{
+            let hud = document.getElementById('sentinel-hud');
+            if (!hud) {{
+                hud = document.createElement('div');
+                hud.id = 'sentinel-hud';
+                hud.style.cssText = 'position:fixed; top:20px; left:50%; transform:translateX(-50%); background:rgba(15, 23, 42, 0.95); color:#10b981; font-family:"Courier New", monospace; padding:16px 24px; z-index:2147483647; text-align:center; font-size:16px; border:2px solid #10b981; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.8); pointer-events:none; max-width:90%; word-wrap:break-word; backdrop-filter:blur(4px);';
+                document.body.appendChild(hud);
+            }}
+            hud.innerHTML = '🛡️ <b style="color:#fff;">SENTINEL ACTION LOG:</b><br><br><span style="color:#f59e0b;">' + '{safe_message}' + '</span>';
+        }} catch(e) {{}}
+    }})();
+    """
+    try:
+        page.evaluate(js_code)
+    except Exception:
+        pass
 
 # ======================================================
 # 🧠 INTELLIGENT CONFIDENCE SCORING
 # ======================================================
-def intelligent_confidence_scoring(issue, url, response):
+def intelligent_confidence_scoring(issue, url, html_content, headers):
     score = 0
 
-    if issue["confidence"] == "HIGH":
-        score += 3
-    elif issue["confidence"] == "MEDIUM":
-        score += 2
-    else:
-        score += 1
+    if issue["confidence"] == "HIGH": score += 3
+    elif issue["confidence"] == "MEDIUM": score += 2
+    else: score += 1
 
-    if url.startswith("https://"):
-        score += 1
+    if url.startswith("https://"): score += 1
+    if "text/html" in headers.get("content-type", ""): score += 1
 
-    if "text/html" in response.headers.get("Content-Type", ""):
-        score += 1
-
-    if "XSS" in issue["name"] and "<script>" in response.text:
+    if "XSS" in issue["name"] and "<script>" in html_content:
         score += 2
 
     if "Missing Security Header" in issue["name"]:
         score += 2
-
-    if "Cookie" in issue["name"] and "Set-Cookie" in response.headers:
-        score += 1
 
     if issue["source"] == "Static":
         score -= 1
 
-    if score >= 6:
-        issue["confidence"] = "HIGH"
-    elif score >= 4:
-        issue["confidence"] = "MEDIUM"
-    else:
-        issue["confidence"] = "LOW"
+    if score >= 6: issue["confidence"] = "HIGH"
+    elif score >= 4: issue["confidence"] = "MEDIUM"
+    else: issue["confidence"] = "LOW"
 
     return issue
 
-
-"""
-i am also add this code where it show low false positive,
-if you want just remove the comment and delete the upper function [intelligent_confidence_scoring].
-
-def intelligent_confidence_scoring(issue, url, response):
-    score = 0
-
-    # Base confidence from the test itself
-    if issue["confidence"] == "HIGH":
-        score += 2  # Reduced from 3
-    elif issue["confidence"] == "MEDIUM":
-        score += 1  # Reduced from 2
-
-    # Environmental checks
-    if url.startswith("https://"):
-        score += 1
-
-    # Specific vulnerability confirmation
-    if "XSS" in issue["name"] and "<script>" in response.text:
-        score += 2
-
-    if "Missing Security Header" in issue["name"]:
-        score += 1 # Reduced from 2
-
-    # Penalty for Static analysis (often higher FP rate)
-    if issue["source"] == "Static":
-        score -= 2 # Increased penalty from -1
-
-    # --- UPDATED THRESHOLDS ---
-    # We increase the requirements so most items fall into "LOW"
-    if score >= 8: # Was 6
-        issue["confidence"] = "HIGH"
-    elif score >= 6: # Was 4
-        issue["confidence"] = "MEDIUM"
-    else:
-        issue["confidence"] = "LOW"
-
-    return issue
-"""
-
 # ======================================================
-# 🔎 INJECTION TESTING MODULE
+# 🔎 INJECTION TESTING MODULE (PLAYWRIGHT VISUAL)
 # ======================================================
-def injection_test(url, session):
+def injection_test(url, page):
     issues = []
     payloads = [
         "' OR '1'='1",
@@ -160,10 +124,53 @@ def injection_test(url, session):
 
     for payload in payloads:
         try:
+            print(f"[SYSTEM] Probing payload: {payload}")
+            
+            # Step 1: URL Injection
             test_url = url + "?test=" + payload
-            response = session.get(test_url, timeout=5)
+            page.goto(test_url, timeout=5000)
+            
+            # Show the HUD banner for the URL injection so it records in the video
+            show_hud(page, f"https://en.wikipedia.org/wiki/Injection_%28medicine%29<br>Testing Parameter: ?test={payload}")
+            take_snapshot(page)
+            time.sleep(2) # Give the video time to record the banner clearly
+            
+            # Step 2: Visual UI Injection (Makes the bot type on screen)
+            try:
+                # Find input fields on the screen (search bars, text boxes)
+                inputs = page.locator("input[type='text'], input[type='search'], input:not([type])").all()
+                
+                if inputs:
+                    # Target the first visible input field
+                    target_input = inputs[0]
+                    target_input.highlight() 
+                    
+                    show_hud(page, f"[FORM INJECTION]<br>Targeting visible input field...")
+                    take_snapshot(page)
+                    time.sleep(1)
+                    
+                    # Literally type the payload so it shows in the video
+                    target_input.fill(payload)
+                    show_hud(page, f"[TYPING PAYLOAD]<br>{payload}")
+                    take_snapshot(page)
+                    time.sleep(1.5) 
+                    
+                    # Hit enter to submit the malicious form
+                    show_hud(page, f"[SUBMITTING]<br>Executing attack payload...")
+                    target_input.press("Enter")
+                    time.sleep(1.5) 
+            except Exception:
+                pass # If no inputs are found, just continue
+            
+            # Take final snapshot of the result
+            show_hud(page, f"[ANALYZING]<br>Evaluating server response...")
+            take_snapshot(page)
+            time.sleep(1)
+            
+            content = page.content()
 
-            if payload in response.text:
+            # Check if payload was reflected
+            if payload in content:
                 add_issue(issues, {
                     "name": "Improper Input Validation (Injection)",
                     "risk": "User input is reflected without sanitization",
@@ -173,27 +180,19 @@ def injection_test(url, session):
                     "source": "Dynamic"
                 })
                 break
-
-            if response.status_code == 500:
-                add_issue(issues, {
-                    "name": "Possible Injection Vulnerability",
-                    "risk": "Server error triggered by crafted input",
-                    "resolution": "Use parameterized queries and strict validation",
-                    "confidence": "MEDIUM",
-                    "owasp": "A03",
-                    "source": "Dynamic"
-                })
-                break
-        except:
+        except PlaywrightTimeoutError:
             continue
+        except Exception:
+            continue
+            
     return issues
 
 # ======================================================
 # STATIC ANALYSIS
 # ======================================================
-def static_scan(url, response):
+def static_scan(html):
     issues = []
-    soup = BeautifulSoup(response.text, "html.parser")
+    soup = BeautifulSoup(html, "html.parser")
 
     for form in soup.find_all("form"):
         method = form.get("method", "").lower()
@@ -235,7 +234,7 @@ def static_scan(url, response):
 # ======================================================
 # DYNAMIC ANALYSIS
 # ======================================================
-def dynamic_scan(url, response, session):
+def dynamic_scan(url, headers):
     issues = []
 
     if not url.startswith("https://"):
@@ -248,13 +247,12 @@ def dynamic_scan(url, response, session):
             "source": "Dynamic"
         })
 
-    headers = response.headers
-    content_type = headers.get("Content-Type", "")
+    content_type = headers.get("content-type", "")
 
-    for header in ["Content-Security-Policy", "X-Frame-Options", "X-Content-Type-Options"]:
+    for header in ["content-security-policy", "x-frame-options", "x-content-type-options"]:
         if header not in headers and "text/html" in content_type:
             add_issue(issues, {
-                "name": f"Missing Security Header: {header}",
+                "name": f"Missing Security Header: {header.upper()}",
                 "risk": "Browser protections disabled",
                 "resolution": f"Configure {header}",
                 "confidence": "MEDIUM",
@@ -262,7 +260,7 @@ def dynamic_scan(url, response, session):
                 "source": "Dynamic"
             })
 
-    if "Server" in headers and len(headers["Server"]) > 3:
+    if "server" in headers and len(headers["server"]) > 3:
         add_issue(issues, {
             "name": "Server Version Disclosure",
             "risk": "Technology fingerprinting",
@@ -272,31 +270,7 @@ def dynamic_scan(url, response, session):
             "source": "Dynamic"
         })
 
-    # Basic XSS Reflector test
-    try:
-        payload = "<script>alert(1)</script>"
-        test = session.get(url, params={"x": payload}, timeout=5)
-        if payload in test.text and "text/html" in test.headers.get("Content-Type", ""):
-            add_issue(issues, {
-                "name": "Reflected XSS",
-                "risk": "User input reflected",
-                "resolution": "Encode output",
-                "confidence": "HIGH",
-                "owasp": "A03",
-                "source": "Dynamic"
-            })
-    except:
-        pass
-
-    return issues
-
-# ======================================================
-# EXTENDED DYNAMIC ANALYSIS
-# ======================================================
-def extended_dynamic_scan(url, response):
-    issues = []
-    cookies = response.headers.get("Set-Cookie", "")
-    
+    cookies = headers.get("set-cookie", "")
     if cookies:
         if "HttpOnly" not in cookies:
             add_issue(issues, {
@@ -308,70 +282,86 @@ def extended_dynamic_scan(url, response):
                 "source": "Dynamic"
             })
 
-        if "Secure" not in cookies and url.startswith("https"):
-            add_issue(issues, {
-                "name": "Missing Secure Cookie Flag",
-                "risk": "Cookies sent over insecure channel",
-                "resolution": "Enable Secure flag",
-                "confidence": "MEDIUM",
-                "owasp": "A07",
-                "source": "Dynamic"
-            })
-
-    if "Index of /" in response.text:
-        add_issue(issues, {
-            "name": "Directory Listing Enabled",
-            "risk": "Sensitive files exposed",
-            "resolution": "Disable directory listing",
-            "confidence": "MEDIUM",
-            "owasp": "A05",
-            "source": "Dynamic"
-        })
-
     return issues
 
 # ======================================================
-# MAIN SCANNER ENGINE
+# MAIN SCANNER ENGINE (PLAYWRIGHT UPGRADE)
 # ======================================================
-def scan_website(url):
+def scan_website(url, scan_id="manual"):
     global DUPLICATE_SUPPRESSED
     DUPLICATE_SUPPRESSED = 0
 
-    print("\n🔍 Scanning:", url)
+    print(f"\n🔍 Scanning: {url}")
     print("=" * 60)
 
     scan_start = time.time()
-    session = create_session()
-
-    try:
-        response = session.get(url, timeout=15)
-        # Check if the site returned a 503 or other error
-        if response.status_code == 503:
-            print("❌ Error: Site returned 503 (Service Unavailable). The target is likely overloaded or blocking automated scans.")
-            return
-        response.raise_for_status()
-    except Exception as e:
-        print(f"❌ Connection Error: {str(e)}")
-        print("\nTip: If you're scanning Juice Shop, it frequently goes down or blocks scripts. Try a local URL or testphp.vulnweb.com.")
-        return
-
-    # Phase 1: Static Scan
-    static_issues = static_scan(url, response)
+    all_issues = []
+    video_filename = f"{scan_id}.webm"
     
-    # Phase 2: Dynamic Scan
-    dynamic_issues = dynamic_scan(url, response, session)
-    
-    # Phase 3: Extended Dynamic
-    extended_issues = extended_dynamic_scan(url, response)
-    
-    # Phase 4: Injection Testing
-    inj_issues = injection_test(url, session)
+    # ─── PLAYWRIGHT BROWSER AUTOMATION ───
+    with sync_playwright() as p:
+        print("[SYSTEM] Booting Headless Chromium Browser...")
+        browser = p.chromium.launch(headless=True)
+        
+        context = browser.new_context(
+            record_video_dir="static/history",
+            record_video_size={"width": 1280, "height": 720}
+        )
+        page = context.new_page()
 
-    all_issues = static_issues + dynamic_issues + extended_issues + inj_issues
+        captured_headers = {}
+        def handle_response(response):
+            if response.url == url:
+                captured_headers.update(response.headers)
+        
+        page.on("response", handle_response)
 
-    # Phase 5: Scoring and Sorting
+        try:
+            print(f"[SYSTEM] Navigating to {url}...")
+            page.goto(url, timeout=15000)
+            page.wait_for_load_state("networkidle", timeout=5000)
+            
+            show_hud(page, f"[INITIALIZING]<br>Connected to target: {url}")
+            take_snapshot(page)
+            time.sleep(2)
+            
+            html_content = page.content()
+            
+            print("[SYSTEM] Running Static Analysis on DOM...")
+            static_issues = static_scan(html_content)
+            
+            print("[SYSTEM] Running Dynamic Analysis on Headers...")
+            dynamic_issues = dynamic_scan(url, captured_headers)
+            
+            print("[SYSTEM] Executing Injection Payloads visually...")
+            inj_issues = injection_test(url, page)
+            
+            show_hud(page, "[COMPLETED]<br>Scan finished. Generating report...")
+            take_snapshot(page)
+            time.sleep(1)
+            
+            all_issues = static_issues + dynamic_issues + inj_issues
+            
+            page.close()
+            temp_video_path = page.video.path()
+            context.close()
+            browser.close()
+            
+            if temp_video_path and os.path.exists(temp_video_path):
+                final_video_path = os.path.join("static", "history", video_filename)
+                if os.path.exists(final_video_path):
+                    os.remove(final_video_path)
+                os.rename(temp_video_path, final_video_path)
+
+        except Exception as e:
+            print(f"❌ Connection Error: {str(e)}")
+            context.close()
+            browser.close()
+            return None
+
+    # ─── SCORING & REPORT GENERATION ───
     for issue in all_issues:
-        intelligent_confidence_scoring(issue, url, response)
+        intelligent_confidence_scoring(issue, url, html_content, captured_headers)
 
     owasp_count = {}
     for issue in all_issues:
@@ -413,6 +403,8 @@ def scan_website(url):
         print(f"Risk       : {issue['risk']}")
         print(f"Resolution : {issue['resolution']}")
         print(f"Source     : {issue['source']}")
+
+    return video_filename
 
 if __name__ == "__main__":
     target = input("Enter website URL (https://example.com): ")
