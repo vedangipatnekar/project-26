@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  sentinel-scanner:
+    build: .
+    container_name: sentinel_scanner
+    ports:
+      - "5001:5001"
+    env_file:
+      - .env
+    volumes:
+      # This ensures your scan history and videos are saved on your actual computer
+      - ./static:/app/static
+      - ./history.json:/app/history.json
+    restart: unless-stopped

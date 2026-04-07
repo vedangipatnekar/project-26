@@ -1,0 +1,6 @@
+flask
+flask-cors
+python-dotenv
+reportlab
+beautifulsoup4
+playwright

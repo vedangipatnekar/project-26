@@ -623,5 +623,21 @@ def _b64_to_image(b64_str, w, h):
     try: return Image(io.BytesIO(base64.b64decode(b64_str.split(",", 1)[-1])), width=w, height=h)
     except Exception: return None
 
+@app.route("/")
+def index():
+    """Serves the main scanner UI."""
+    return send_file('index.html')
+
+@app.route("/history")
+def history_page():
+    """Serves the history UI."""
+    return send_file('history.html')
+
+# Ensure the app serves other root-level files like style.css and script.js
+@app.route('/<path:path>')
+def send_report_assets(path):
+    return send_from_directory('.', path)
+
 if __name__ == "__main__":
+    # In Docker, we must listen on 0.0.0.0
     app.run(host="0.0.0.0", port=5001, debug=False)
