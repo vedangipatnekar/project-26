@@ -103,8 +103,8 @@ def intelligent_confidence_scoring(issue, url, html_content, headers):
     if issue["source"] == "Static":
         score -= 1
 
-    if score >= 6: issue["confidence"] = "HIGH"
-    elif score >= 4: issue["confidence"] = "MEDIUM"
+    if score >= 5: issue["confidence"] = "HIGH"
+    elif score >= 3: issue["confidence"] = "MEDIUM"
     else: issue["confidence"] = "LOW"
 
     return issue
@@ -362,7 +362,10 @@ def scan_website(url, scan_id="manual"):
     # ─── SCORING & REPORT GENERATION ───
     for issue in all_issues:
         intelligent_confidence_scoring(issue, url, html_content, captured_headers)
-
+    
+        # Delete low-level junk to fix the False Positive rate
+        all_issues = [i for i in all_issues if not (i["confidence"] == "LOW" and i["source"] == "Static")]
+    
     owasp_count = {}
     for issue in all_issues:
         owasp_id = issue["owasp"]

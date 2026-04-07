@@ -1,1 +1,50 @@
-[]
+[
+    {
+        "id": "d8b77e87",
+        "url": "http://google.com",
+        "date": "2026-04-07 22:16:11",
+        "threats": "1",
+        "video": "d8b77e87.webm",
+        "report": "\n\ud83d\udd0d Scanning: http://google.com\n============================================================\n[SYSTEM] Booting Headless Chromium Browser...\n[SYSTEM] Navigating to http://google.com...\n[SYSTEM] Running Static Analysis on DOM...\n[SYSTEM] Running Dynamic Analysis on Headers...\n[SYSTEM] Executing Injection Payloads visually...\n[SYSTEM] Probing payload: ' OR '1'='1\n[SYSTEM] Probing payload: \" OR \"1\"=\"1\n[SYSTEM] Probing payload: <script>alert(1)</script>\n[SYSTEM] Probing payload: `; ls`\n[SYSTEM] Probing payload: $(whoami)\nHIGH : \ud83d\udd34\nMEDIUM : \ud83d\udfe0\nLOW : \ud83d\udfe2\n\n\ud83d\udcca SCAN SUMMARY\n============================================================\nTotal Threats Found        : 1\nDuplicate Risks Suppressed : 0\nFalse Positives (LOW)      : 0\nFalse Positive Rate        : 0.00%\n\n\u23f1\ufe0f SCAN PERFORMANCE METRICS\n============================================================\nTotal Scan Time            : 30.04 seconds\n\n\ud83d\udcda OWASP TOP 10 SUMMARY\n============================================================\nA02 - Cryptographic Failures : 1\n\n\ud83d\udfe0 Threat #1\nName       : Website not using HTTPS\nOWASP      : A02 - Cryptographic Failures\nRisk       : Sensitive data transmitted insecurely\nResolution : Enable HTTPS\nSource     : Dynamic\n"
+    },
+    {
+        "id": "3cde8dbd",
+        "url": "http://demo.testfire.net",
+        "date": "2026-04-07 22:14:01",
+        "threats": "2",
+        "video": "3cde8dbd.webm",
+        "report": "\n\ud83d\udd0d Scanning: http://demo.testfire.net\n============================================================\n[SYSTEM] Booting Headless Chromium Browser...\n[SYSTEM] Navigating to http://demo.testfire.net...\n[SYSTEM] Running Static Analysis on DOM...\n[SYSTEM] Running Dynamic Analysis on Headers...\n[SYSTEM] Executing Injection Payloads visually...\n[SYSTEM] Probing payload: ' OR '1'='1\nHIGH : \ud83d\udd34\nMEDIUM : \ud83d\udfe0\nLOW : \ud83d\udfe2\n\n\ud83d\udcca SCAN SUMMARY\n============================================================\nTotal Threats Found        : 2\nDuplicate Risks Suppressed : 0\nFalse Positives (LOW)      : 0\nFalse Positive Rate        : 0.00%\n\n\u23f1\ufe0f SCAN PERFORMANCE METRICS\n============================================================\nTotal Scan Time            : 44.56 seconds\n\n\ud83d\udcda OWASP TOP 10 SUMMARY\n============================================================\nA02 - Cryptographic Failures : 1\nA03 - Injection : 1\n\n\ud83d\udfe0 Threat #1\nName       : Website not using HTTPS\nOWASP      : A02 - Cryptographic Failures\nRisk       : Sensitive data transmitted insecurely\nResolution : Enable HTTPS\nSource     : Dynamic\n\n\ud83d\udfe0 Threat #2\nName       : Improper Input Validation (Injection)\nOWASP      : A03 - Injection\nRisk       : User input is reflected without sanitization\nResolution : Validate and sanitize all user inputs\nSource     : Dynamic\n"
+    },
+    {
+        "id": "89711fe4",
+        "url": "http://demo.testfire.net",
+        "date": "2026-04-07 16:42:26",
+        "threats": "3",
+        "video": "89711fe4.webm",
+        "report": "\n\ud83d\udd0d Scanning: http://demo.testfire.net\n============================================================\n[SYSTEM] Booting Headless Chromium Browser...\n[SYSTEM] Navigating to http://demo.testfire.net...\n[SYSTEM] Running Static Analysis on DOM...\n[SYSTEM] Running Dynamic Analysis on Headers...\n[SYSTEM] Executing Injection Payloads visually...\n[SYSTEM] Probing payload: ' OR '1'='1\nHIGH : \ud83d\udd34\nMEDIUM : \ud83d\udfe0\nLOW : \ud83d\udfe2\n\n\ud83d\udcca SCAN SUMMARY\n============================================================\nTotal Threats Found        : 3\nDuplicate Risks Suppressed : 0\nFalse Positives (LOW)      : 3\nFalse Positive Rate        : 100.00%\n\n\u23f1\ufe0f SCAN PERFORMANCE METRICS\n============================================================\nTotal Scan Time            : 14.03 seconds\n\n\ud83d\udcda OWASP TOP 10 SUMMARY\n============================================================\nA02 - Cryptographic Failures : 1\nA03 - Injection : 2\n\n\ud83d\udfe2 Threat #1\nName       : Weak Input Validation\nOWASP      : A03 - Injection\nRisk       : User input not validated\nResolution : Apply strict validation\nSource     : Static\n\n\ud83d\udfe2 Threat #2\nName       : Website not using HTTPS\nOWASP      : A02 - Cryptographic Failures\nRisk       : Sensitive data transmitted insecurely\nResolution : Enable HTTPS\nSource     : Dynamic\n\n\ud83d\udfe2 Threat #3\nName       : Improper Input Validation (Injection)\nOWASP      : A03 - Injection\nRisk       : User input is reflected without sanitization\nResolution : Validate and sanitize all user inputs\nSource     : Dynamic\n"
+    },
+    {
+        "id": "8b717bcd",
+        "url": "http://demo.testfire.net",
+        "date": "2026-04-07 16:30:03",
+        "threats": "3",
+        "video": "8b717bcd.webm",
+        "report": "\n\ud83d\udd0d Scanning: http://demo.testfire.net\n============================================================\n[SYSTEM] Booting Headless Chromium Browser...\n[SYSTEM] Navigating to http://demo.testfire.net...\n[SYSTEM] Running Static Analysis on DOM...\n[SYSTEM] Running Dynamic Analysis on Headers...\n[SYSTEM] Executing Injection Payloads visually...\n[SYSTEM] Probing payload: ' OR '1'='1\nHIGH : \ud83d\udd34\nMEDIUM : \ud83d\udfe0\nLOW : \ud83d\udfe2\n\n\ud83d\udcca SCAN SUMMARY\n============================================================\nTotal Threats Found        : 3\nDuplicate Risks Suppressed : 0\nFalse Positives (LOW)      : 3\nFalse Positive Rate        : 100.00%\n\n\u23f1\ufe0f SCAN PERFORMANCE METRICS\n============================================================\nTotal Scan Time            : 13.42 seconds\n\n\ud83d\udcda OWASP TOP 10 SUMMARY\n============================================================\nA02 - Cryptographic Failures : 1\nA03 - Injection : 2\n\n\ud83d\udfe2 Threat #1\nName       : Weak Input Validation\nOWASP      : A03 - Injection\nRisk       : User input not validated\nResolution : Apply strict validation\nSource     : Static\n\n\ud83d\udfe2 Threat #2\nName       : Website not using HTTPS\nOWASP      : A02 - Cryptographic Failures\nRisk       : Sensitive data transmitted insecurely\nResolution : Enable HTTPS\nSource     : Dynamic\n\n\ud83d\udfe2 Threat #3\nName       : Improper Input Validation (Injection)\nOWASP      : A03 - Injection\nRisk       : User input is reflected without sanitization\nResolution : Validate and sanitize all user inputs\nSource     : Dynamic\n"
+    },
+    {
+        "id": "05040886",
+        "url": "http://demo.testfire.net",
+        "date": "2026-04-07 16:29:58",
+        "threats": "0",
+        "video": "05040886.webm",
+        "report": "\n\ud83d\udd0d Scanning: http://demo.testfire.net\n============================================================\n[SYSTEM] Booting Headless Chromium Browser...\n[SYSTEM] Navigating to http://demo.testfire.net...\n[SYSTEM] Running Static Analysis on DOM...\n[SYSTEM] Running Dynamic Analysis on Headers...\n[SYSTEM] Executing Injection Payloads visually...\n[SYSTEM] Probing payload: ' OR '1'='1\n"
+    },
+    {
+        "id": "56ff0fe9",
+        "url": "https://testphp.vulnweb.com",
+        "date": "2026-04-07 16:27:31",
+        "threats": "0",
+        "video": null,
+        "report": "\n\ud83d\udd0d Scanning: https://testphp.vulnweb.com\n============================================================\n[SYSTEM] Booting Headless Chromium Browser...\n[SYSTEM] Navigating to https://testphp.vulnweb.com...\n\u274c Connection Error: Page.goto: Timeout 15000ms exceeded.\nCall log:\n  - navigating to \"https://testphp.vulnweb.com/\", waiting until \"load\"\n\n"
+    }
+]
