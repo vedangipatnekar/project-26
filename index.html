@@ -70,15 +70,29 @@
       <!-- RESULTS PANEL -->
       <section class="panel results-panel">
         
-        <!-- NEW HEADER LAYOUT: Tabs on the left, PDF Download button on the right -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <!-- HEADER LAYOUT -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px;">
           <div class="panel-tabs" style="margin-bottom: 0; flex: 1;">
             <button id="tabBtnTerminal" class="tab-btn active" onclick="switchTab('terminal')">Log Output</button>
             <button id="tabBtnVisuals" class="tab-btn" onclick="switchTab('visuals')">Analytics</button>
           </div>
-          <button class="secondary-btn" onclick="downloadPDF()" style="width: auto; margin-top: 0; margin-left: 16px; padding: 9px 16px; transform: translateY(0);">
-            <span class="icon">📄</span> Export Report
-          </button>
+          <div class="result-actions">
+            <button id="aiHelpBtn" class="secondary-btn scan-action-btn" onclick="openAIHelp()" style="width: auto; margin-top: 0; padding: 9px 16px; transform: translateY(0);">
+              <span class="icon">🤖</span> AI Help
+            </button>
+            <button class="secondary-btn scan-action-btn" onclick="downloadPDF()" style="width: auto; margin-top: 0; padding: 9px 16px; transform: translateY(0);">
+              <span class="icon">📄</span> Export Report
+            </button>
+            <div class="menu-wrapper">
+              <button id="scanShareMenuBtn" class="menu-btn" onclick="toggleScanShareMenu(event)" aria-label="More share options">⋯</button>
+              <div id="scanShareMenu" class="menu-dropdown hidden">
+                <button onclick="openEmailModalFromScan()">Mail It</button>
+                <button onclick="downloadReportText()">Download Log (.txt)</button>
+                <button onclick="shareToWhatsAppFromScan()">Share to WhatsApp</button>
+                <button onclick="shareNativeFromScan()">Other Share Options</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div id="tab-terminal" class="tab-content">
@@ -123,10 +137,45 @@
           </div>
         </div>
         
-        <!-- Removed the old bottom footer entirely -->
       </section>
     </div>
   </main>
+
+  <div id="emailShareModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="emailShareTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="emailShareTitle">Share Scan via Email</h3>
+        <button class="modal-close" onclick="closeEmailModal()" aria-label="Close">✕</button>
+      </div>
+      <p class="modal-subtitle">Enter the recipient email address. Delivery is handled securely.</p>
+      <div class="input-group">
+        <label for="receiverEmailInput">Recipient Email</label>
+        <input id="receiverEmailInput" type="email" placeholder="recipient@example.com" list="receiverEmailSuggestions" autocomplete="email">
+        <datalist id="receiverEmailSuggestions"></datalist>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn-cancel" onclick="closeEmailModal()">Cancel</button>
+        <button class="primary-btn" onclick="sendShareEmail()" style="margin-top:0;">Send Mail</button>
+      </div>
+      <p id="emailShareStatus" class="modal-status"></p>
+    </div>
+  </div>
+
+  <div id="aiHelpModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="aiHelpTitle">
+    <div class="modal-card modal-large">
+      <div class="modal-head">
+        <h3 id="aiHelpTitle">AI Vulnerability Guidance</h3>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <!-- NEW DOWNLOAD BUTTON -->
+          <button id="downloadAIBtn" class="secondary-btn hidden" onclick="downloadAIText()" style="padding: 6px 12px; transform: none; width: auto; opacity: 1; pointer-events: auto; margin-top: 0;">
+            <span class="icon">💾</span> Save AI Advice
+          </button>
+          <button class="modal-close" onclick="closeAIHelpModal()" aria-label="Close">✕</button>
+        </div>
+      </div>
+      <div id="aiHelpContent" class="ai-content">Run a scan and click AI Help to get vulnerability explanations and mitigation advice.</div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>

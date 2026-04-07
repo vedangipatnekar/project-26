@@ -8,6 +8,13 @@ import base64
 import re
 import json
 import uuid
+import html
+import urllib.request
+import urllib.error
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -27,6 +34,8 @@ CORS(app)
 
 LAST_REPORT_RAW = ""
 HISTORY_FILE = "history.json"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 # ── Ensure Storage Directories Exist ────────────────────────
 os.makedirs(os.path.join("static", "history"), exist_ok=True)
@@ -45,6 +54,193 @@ def load_history():
 def save_history(data):
     with open(HISTORY_FILE, 'w') as f:
         json.dump(data, f, indent=4)
+
+
+def _http_json_post(url, payload, headers=None, timeout=30):
+    body = json.dumps(payload).encode("utf-8")
+    req_headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9"
+    }
+    if headers:
+        req_headers.update(headers)
+
+    req = urllib.request.Request(url, data=body, headers=req_headers, method="POST")
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        raw = resp.read().decode("utf-8")
+        return json.loads(raw) if raw else {}
+
+
+def generate_ai_guidance(report_text):
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY is not configured on the server.")
+
+    prompt = (
+        "You are a senior web application security expert. "
+        "Analyze the scanner report below and provide:\n"
+        "1) A short overall risk summary\n"
+        "2) Vulnerabilities explained in simple words\n"
+        "3) Actionable remediation steps for each issue\n"
+        "4) A prioritized fix order (what to fix first)\n"
+        "Keep it practical and concise.\n\n"
+        f"SCAN REPORT:\n{report_text}"
+    )
+
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+            {"role": "system", "content": "You provide precise web security remediation guidance."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.2
+    }
+
+    response = _http_json_post(
+        GROQ_API_URL,
+        payload,
+        headers={"Authorization": f"Bearer {api_key}"},
+        timeout=45
+    )
+
+    choices = response.get("choices", [])
+    if not choices:
+        raise RuntimeError("Groq API returned an empty response.")
+
+    message = choices[0].get("message", {})
+    content = message.get("content", "").strip()
+    if not content:
+        raise RuntimeError("Groq API did not return analysis text.")
+    return content
+
+
+def build_email_pdf(report_text, ai_text=""):
+    summary, owasp_counts, findings = parse_report(report_text)
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4, rightMargin=20*mm, leftMargin=20*mm,
+        topMargin=14*mm, bottomMargin=14*mm
+    )
+
+    styles = getSampleStyleSheet()
+
+    def style(name, **kw):
+        base = kw.pop("parent", styles["Normal"])
+        return ParagraphStyle(name, parent=base, **kw)
+
+    sTitle = style("EmailTitle", fontSize=20, textColor=C_NAVY, fontName="Helvetica-Bold", alignment=TA_CENTER, spaceAfter=8)
+    sSmall = style("EmailSmall", fontSize=8.5, textColor=C_MUTED)
+    sBody = style("EmailBody", fontSize=9.5, textColor=C_TEXT, leading=14)
+
+    elements = []
+    elements.append(Paragraph("Sentinel Security Audit Report", sTitle))
+    elements.append(Paragraph(f"<b>Target:</b> {html.escape(summary.get('url') or 'N/A')}", sSmall))
+    elements.append(Paragraph(f"<b>Generated:</b> {time.strftime('%Y-%m-%d %H:%M:%S')}", sSmall))
+    elements.append(Spacer(1, 8))
+
+    summary_tbl = Table([
+        ["Total Threats", summary.get("total", "0")],
+        ["Duplicates Removed", summary.get("duplicates", "0")],
+        ["Low Confidence (FP)", summary.get("false_positives", "0")],
+        ["False Positive Rate", summary.get("fp_rate", "0.00%")],
+        ["Scan Duration", summary.get("scan_time", "N/A")],
+    ], colWidths=[160, 120])
+    summary_tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+        ("GRID", (0, 0), (-1, -1), 0.5, C_BORDER),
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(summary_tbl)
+    elements.append(Spacer(1, 10))
+
+    if owasp_counts:
+        elements.append(Paragraph("<b>OWASP Breakdown</b>", sBody))
+        rows = [["Category", "Count"]]
+        for k, v in sorted(owasp_counts.items()):
+            rows.append([k, str(v)])
+        owasp_tbl = Table(rows, colWidths=[360, 80])
+        owasp_tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), C_NAVY),
+            ("TEXTCOLOR", (0, 0), (-1, 0), C_WHITE),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.5, C_BORDER),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ]))
+        elements.append(owasp_tbl)
+        elements.append(Spacer(1, 10))
+
+    if findings:
+        elements.append(Paragraph("<b>Detailed Findings</b>", sBody))
+        for f in findings:
+            name = html.escape(f.get("Name", "Unnamed Finding"))
+            sev = html.escape(f.get("severity", "LOW"))
+            risk = html.escape(f.get("Risk", ""))
+            resolution = html.escape(f.get("Resolution", ""))
+            source = html.escape(f.get("Source", ""))
+            owasp = html.escape(f.get("OWASP", ""))
+            elements.append(Paragraph(f"<b>#{f.get('number', '?')} - {name}</b> ({sev})", sBody))
+            elements.append(Paragraph(f"<b>OWASP:</b> {owasp}", sBody))
+            elements.append(Paragraph(f"<b>Risk:</b> {risk}", sBody))
+            elements.append(Paragraph(f"<b>Resolution:</b> {resolution}", sBody))
+            elements.append(Paragraph(f"<b>Source:</b> {source}", sBody))
+            elements.append(Spacer(1, 6))
+
+    if ai_text:
+        elements.append(Paragraph("<b>AI Guidance</b>", sBody))
+        for line in ai_text.split("\n"):
+            txt = html.escape(line.strip()) or "&nbsp;"
+            elements.append(Paragraph(txt, sBody))
+
+    doc.build(elements)
+    buf.seek(0)
+    return buf.read()
+
+
+def send_report_email_brevo(receiver_email, subject, report_text, ai_text="", pdf_bytes=None):
+    api_key = os.getenv("BREVO_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("BREVO_API_KEY is not configured on the server.")
+
+    sender_name = os.getenv("BREVO_SENDER_NAME", "Sentinel Scanner")
+
+    brevo_sender = os.getenv("BREVO_SENDER_EMAIL", "").strip()
+    if not brevo_sender:
+        raise RuntimeError("BREVO_SENDER_EMAIL is not configured on the server.")
+
+    ai_section = f"\n\nAI Guidance:\n{ai_text}" if ai_text else ""
+    email_text = (
+        f"Scanner shared from: {brevo_sender}\n"
+        f"\nSecurity report:\n{report_text}{ai_section}\n"
+    )
+
+    payload = {
+        "sender": {"name": sender_name, "email": brevo_sender},
+        "to": [{"email": receiver_email}],
+        "replyTo": {"email": brevo_sender},
+        "subject": subject,
+        "textContent": email_text
+    }
+
+    if pdf_bytes:
+        payload["attachment"] = [{
+            "name": "Sentinel_Security_Report.pdf",
+            "content": base64.b64encode(pdf_bytes).decode("utf-8")
+        }]
+
+    return _http_json_post(
+        BREVO_API_URL,
+        payload,
+        headers={"api-key": api_key},
+        timeout=30
+    )
 
 
 # ── Colour Palette (PDF) ────────────────────────────────────
@@ -109,7 +305,50 @@ def scan():
     finally:
         sys.stdout = old_stdout
 
-    return jsonify({"report": LAST_REPORT_RAW, "scan_id": scan_id})
+    return jsonify({"report": LAST_REPORT_RAW, "scan_id": scan_id, "url": url, "video": video_filename})
+
+
+@app.route("/ai-help", methods=["POST"])
+def ai_help():
+    body = request.get_json(silent=True) or {}
+    report_text = body.get("report_raw", "").strip() or LAST_REPORT_RAW
+
+    if not report_text:
+        return jsonify({"error": "No scan data available to analyze."}), 400
+
+    try:
+        ai_text = generate_ai_guidance(report_text)
+        return jsonify({"analysis": ai_text})
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="ignore") if hasattr(e, "read") else str(e)
+        return jsonify({"error": f"AI service error ({e.code}): {detail}"}), 502
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/share/email", methods=["POST"])
+def share_email():
+    body = request.get_json(silent=True) or {}
+    receiver_email = (body.get("receiver_email") or "").strip()
+    report_text = (body.get("report_raw") or "").strip() or LAST_REPORT_RAW
+    ai_text = (body.get("ai_analysis") or "").strip()
+
+    if not receiver_email:
+        return jsonify({"error": "receiver_email is required."}), 400
+    if not report_text:
+        return jsonify({"error": "No scan data available to share."}), 400
+
+    subject = (body.get("subject") or "Sentinel Security Report").strip()
+
+    try:
+        pdf_bytes = build_email_pdf(report_text, ai_text)
+        resp = send_report_email_brevo(receiver_email, subject, report_text, ai_text, pdf_bytes=pdf_bytes)
+        return jsonify({"status": "success", "provider_response": resp})
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="ignore") if hasattr(e, "read") else str(e)
+        return jsonify({"error": f"Email service error ({e.code}): {detail}"}), 502
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ══════════════════════════════════════════════════════════════
