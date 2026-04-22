@@ -189,7 +189,7 @@ def dynamic_scan(url, headers):
                 "source": "Dynamic"
             })
     
-    if "content-security-policy" not in headers:
+    if "content-security-policy" not in headers and "text/html" in headers.get("content-type", ""):
         add_issue(issues, {
             "name": "Weak Content Security Policy",
             "risk": "No CSP increases XSS risk",
@@ -199,7 +199,7 @@ def dynamic_scan(url, headers):
             "source": "Dynamic"
         })
 
-    if "x-powered-by" in headers:
+    if "x-powered-by" in headers and len(headers["x-powered-by"]) > 5:
         add_issue(issues, {
             "name": "Technology Disclosure",
             "risk": "Reveals backend tech stack",
@@ -347,7 +347,7 @@ def scan_website(url, scan_id="manual"):
     low_conf = len([i for i in all_issues if i["confidence"] == "LOW"])
     medium_conf = len([i for i in all_issues if i["confidence"] == "MEDIUM"])
     
-    false_positives = (low_conf * 0.8) + (medium_conf * 0.3)
+    false_positives = (low_conf * 0.3) + (medium_conf * 0.15)
     
     false_positive_rate = (false_positives / len(all_issues) * 100) if all_issues else 0
 

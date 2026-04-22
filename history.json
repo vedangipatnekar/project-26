@@ -1,0 +1,50 @@
+[
+    {
+        "id": "d3a6f62e",
+        "url": "https://youtube.com/",
+        "date": "2026-04-23 00:19:22",
+        "threats": "0",
+        "video": "d3a6f62e.webm",
+        "report": "\n\ud83d\udd0d Scanning: https://youtube.com/\n============================================================\n[SYSTEM] Booting Headless Chromium Browser...\n[SYSTEM] Navigating to https://youtube.com/...\n[SYSTEM] Running Static Analysis on DOM...\n[SYSTEM] Running Dynamic Analysis on Headers...\n[SYSTEM] Executing Injection Payloads visually...\nHIGH : \ud83d\udd34\nMEDIUM : \ud83d\udfe0\nLOW : \ud83d\udfe2\n\n\ud83d\udcca SCAN SUMMARY\n============================================================\nTotal Threats Found        : 0\nDuplicate Risks Suppressed : 6\nFalse Positives (est.)     : 0\nFalse Positive Rate        : 30.00%\n\n\u23f1\ufe0f SCAN PERFORMANCE METRICS\n============================================================\nTotal Scan Time            : 14.64 seconds\n\n\ud83d\udcda OWASP TOP 10 SUMMARY\n============================================================\nA04 - Insecure Design : 1\n"
+    },
+    {
+        "id": "102b62cc",
+        "url": "https://google.com/",
+        "date": "2026-04-23 00:19:02",
+        "threats": "3",
+        "video": "102b62cc.webm",
+        "report": "\n\ud83d\udd0d Scanning: https://google.com/\n============================================================\n[SYSTEM] Booting Headless Chromium Browser...\n[SYSTEM] Navigating to https://google.com/...\n[SYSTEM] Running Static Analysis on DOM...\n[SYSTEM] Running Dynamic Analysis on Headers...\n[SYSTEM] Executing Injection Payloads visually...\nHIGH : \ud83d\udd34\nMEDIUM : \ud83d\udfe0\nLOW : \ud83d\udfe2\n\n\ud83d\udcca SCAN SUMMARY\n============================================================\nTotal Threats Found        : 3\nDuplicate Risks Suppressed : 9\nFalse Positives (est.)     : 0\nFalse Positive Rate        : 11.25%\n\n\u23f1\ufe0f SCAN PERFORMANCE METRICS\n============================================================\nTotal Scan Time            : 9.81 seconds\n\n\ud83d\udcda OWASP TOP 10 SUMMARY\n============================================================\nA04 - Insecure Design : 1\nA05 - Security Misconfiguration : 3\n\n\ud83d\udd34 Threat #1\nName       : Missing Security Header: CONTENT-SECURITY-POLICY\nOWASP      : A05 - Security Misconfiguration\nRisk       : Browser protections disabled\nResolution : Configure content-security-policy\nSource     : Dynamic\n\n\ud83d\udd34 Threat #2\nName       : Missing Security Header: X-CONTENT-TYPE-OPTIONS\nOWASP      : A05 - Security Misconfiguration\nRisk       : Browser protections disabled\nResolution : Configure x-content-type-options\nSource     : Dynamic\n\n\ud83d\udfe0 Threat #3\nName       : Weak Content Security Policy\nOWASP      : A05 - Security Misconfiguration\nRisk       : No CSP increases XSS risk\nResolution : Add Content-Security-Policy header\nSource     : Dynamic\n"
+    },
+    {
+        "id": "675c2a78",
+        "url": "https://devpost.com/",
+        "date": "2026-04-23 00:18:46",
+        "threats": "3",
+        "video": "675c2a78.webm",
+        "report": "\n\ud83d\udd0d Scanning: https://devpost.com/\n============================================================\n[SYSTEM] Booting Headless Chromium Browser...\n[SYSTEM] Navigating to https://devpost.com/...\n[SYSTEM] Running Static Analysis on DOM...\n[SYSTEM] Running Dynamic Analysis on Headers...\n[SYSTEM] Executing Injection Payloads visually...\nHIGH : \ud83d\udd34\nMEDIUM : \ud83d\udfe0\nLOW : \ud83d\udfe2\n\n\ud83d\udcca SCAN SUMMARY\n============================================================\nTotal Threats Found        : 3\nDuplicate Risks Suppressed : 10\nFalse Positives (est.)     : 0\nFalse Positive Rate        : 15.00%\n\n\u23f1\ufe0f SCAN PERFORMANCE METRICS\n============================================================\nTotal Scan Time            : 29.06 seconds\n\n\ud83d\udcda OWASP TOP 10 SUMMARY\n============================================================\nA04 - Insecure Design : 1\nA05 - Security Misconfiguration : 2\nA06 - Vulnerable and Outdated Components : 1\n\n\ud83d\udd34 Threat #1\nName       : Missing Security Header: CONTENT-SECURITY-POLICY\nOWASP      : A05 - Security Misconfiguration\nRisk       : Browser protections disabled\nResolution : Configure content-security-policy\nSource     : Dynamic\n\n\ud83d\udfe0 Threat #2\nName       : Server Version Disclosure\nOWASP      : A06 - Vulnerable and Outdated Components\nRisk       : Technology fingerprinting\nResolution : Hide server banner\nSource     : Dynamic\n\n\ud83d\udfe0 Threat #3\nName       : Weak Content Security Policy\nOWASP      : A05 - Security Misconfiguration\nRisk       : No CSP increases XSS risk\nResolution : Add Content-Security-Policy header\nSource     : Dynamic\n"
+    },
+    {
+        "id": "0e6d104b",
+        "url": "https://devpost.com/",
+        "date": "2026-04-23 00:17:29",
+        "threats": "3",
+        "video": "0e6d104b.webm",
+        "report": "\n\ud83d\udd0d Scanning: https://devpost.com/\n============================================================\n[SYSTEM] Booting Headless Chromium Browser...\n[SYSTEM] Navigating to https://devpost.com/...\n[SYSTEM] Running Static Analysis on DOM...\n[SYSTEM] Running Dynamic Analysis on Headers...\n[SYSTEM] Executing Injection Payloads visually...\nHIGH : \ud83d\udd34\nMEDIUM : \ud83d\udfe0\nLOW : \ud83d\udfe2\n\n\ud83d\udcca SCAN SUMMARY\n============================================================\nTotal Threats Found        : 3\nDuplicate Risks Suppressed : 10\nFalse Positives (est.)     : 0\nFalse Positive Rate        : 20.00%\n\n\u23f1\ufe0f SCAN PERFORMANCE METRICS\n============================================================\nTotal Scan Time            : 27.27 seconds\n\n\ud83d\udcda OWASP TOP 10 SUMMARY\n============================================================\nA04 - Insecure Design : 1\nA05 - Security Misconfiguration : 2\nA06 - Vulnerable and Outdated Components : 1\n\n\ud83d\udd34 Threat #1\nName       : Missing Security Header: CONTENT-SECURITY-POLICY\nOWASP      : A05 - Security Misconfiguration\nRisk       : Browser protections disabled\nResolution : Configure content-security-policy\nSource     : Dynamic\n\n\ud83d\udfe0 Threat #2\nName       : Server Version Disclosure\nOWASP      : A06 - Vulnerable and Outdated Components\nRisk       : Technology fingerprinting\nResolution : Hide server banner\nSource     : Dynamic\n\n\ud83d\udfe0 Threat #3\nName       : Weak Content Security Policy\nOWASP      : A05 - Security Misconfiguration\nRisk       : No CSP increases XSS risk\nResolution : Add Content-Security-Policy header\nSource     : Dynamic\n"
+    },
+    {
+        "id": "0a706eeb",
+        "url": "https://youtube.com",
+        "date": "2026-04-23 00:16:52",
+        "threats": "0",
+        "video": "0a706eeb.webm",
+        "report": "\n\ud83d\udd0d Scanning: https://youtube.com\n============================================================\n[SYSTEM] Booting Headless Chromium Browser...\n[SYSTEM] Navigating to https://youtube.com...\n[SYSTEM] Running Static Analysis on DOM...\n[SYSTEM] Running Dynamic Analysis on Headers...\n[SYSTEM] Executing Injection Payloads visually...\nHIGH : \ud83d\udd34\nMEDIUM : \ud83d\udfe0\nLOW : \ud83d\udfe2\n\n\ud83d\udcca SCAN SUMMARY\n============================================================\nTotal Threats Found        : 0\nDuplicate Risks Suppressed : 6\nFalse Positives (est.)     : 0\nFalse Positive Rate        : 40.00%\n\n\u23f1\ufe0f SCAN PERFORMANCE METRICS\n============================================================\nTotal Scan Time            : 14.35 seconds\n\n\ud83d\udcda OWASP TOP 10 SUMMARY\n============================================================\nA04 - Insecure Design : 1\n"
+    },
+    {
+        "id": "b6d11f84",
+        "url": "https://google.com",
+        "date": "2026-04-23 00:16:32",
+        "threats": "0",
+        "video": "b6d11f84.webm",
+        "report": "\n\ud83d\udd0d Scanning: https://google.com\n============================================================\n[SYSTEM] Booting Headless Chromium Browser...\n[SYSTEM] Navigating to https://google.com...\n[SYSTEM] Running Static Analysis on DOM...\n[SYSTEM] Running Dynamic Analysis on Headers...\n[SYSTEM] Executing Injection Payloads visually...\nHIGH : \ud83d\udd34\nMEDIUM : \ud83d\udfe0\nLOW : \ud83d\udfe2\n\n\ud83d\udcca SCAN SUMMARY\n============================================================\nTotal Threats Found        : 0\nDuplicate Risks Suppressed : 9\nFalse Positives (est.)     : 0\nFalse Positive Rate        : 40.00%\n\n\u23f1\ufe0f SCAN PERFORMANCE METRICS\n============================================================\nTotal Scan Time            : 9.79 seconds\n\n\ud83d\udcda OWASP TOP 10 SUMMARY\n============================================================\nA04 - Insecure Design : 1\n"
+    }
+]
