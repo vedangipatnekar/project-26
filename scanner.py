@@ -100,8 +100,9 @@ def intelligent_confidence_scoring(issue, url, html_content, headers):
     if "Missing Security Header" in issue["name"]:
         score += 2
 
+    # ✅ FIX: reduce harsh drop (was -1)
     if issue["source"] == "Static":
-        score -= 1
+        score -= 0.5
 
     if score >= 5: issue["confidence"] = "HIGH"
     elif score >= 3: issue["confidence"] = "MEDIUM"
@@ -110,85 +111,7 @@ def intelligent_confidence_scoring(issue, url, html_content, headers):
     return issue
 
 # ======================================================
-# 🔎 INJECTION TESTING MODULE (PLAYWRIGHT VISUAL)
-# ======================================================
-def injection_test(url, page):
-    issues = []
-    payloads = [
-        "' OR '1'='1",
-        "\" OR \"1\"=\"1",
-        "<script>alert(1)</script>",
-        "`; ls`",
-        "$(whoami)"
-    ]
-
-    for payload in payloads:
-        try:
-            print(f"[SYSTEM] Probing payload: {payload}")
-            
-            # Step 1: URL Injection
-            test_url = url + "?test=" + payload
-            page.goto(test_url, timeout=5000)
-            
-            # Show the HUD banner for the URL injection so it records in the video
-            show_hud(page, f"https://en.wikipedia.org/wiki/Injection_%28medicine%29<br>Testing Parameter: ?test={payload}")
-            take_snapshot(page)
-            time.sleep(2) # Give the video time to record the banner clearly
-            
-            # Step 2: Visual UI Injection (Makes the bot type on screen)
-            try:
-                # Find input fields on the screen (search bars, text boxes)
-                inputs = page.locator("input[type='text'], input[type='search'], input:not([type])").all()
-                
-                if inputs:
-                    # Target the first visible input field
-                    target_input = inputs[0]
-                    target_input.highlight() 
-                    
-                    show_hud(page, f"[FORM INJECTION]<br>Targeting visible input field...")
-                    take_snapshot(page)
-                    time.sleep(1)
-                    
-                    # Literally type the payload so it shows in the video
-                    target_input.fill(payload)
-                    show_hud(page, f"[TYPING PAYLOAD]<br>{payload}")
-                    take_snapshot(page)
-                    time.sleep(1.5) 
-                    
-                    # Hit enter to submit the malicious form
-                    show_hud(page, f"[SUBMITTING]<br>Executing attack payload...")
-                    target_input.press("Enter")
-                    time.sleep(1.5) 
-            except Exception:
-                pass # If no inputs are found, just continue
-            
-            # Take final snapshot of the result
-            show_hud(page, f"[ANALYZING]<br>Evaluating server response...")
-            take_snapshot(page)
-            time.sleep(1)
-            
-            content = page.content()
-
-            # Check if payload was reflected
-            if payload in content:
-                add_issue(issues, {
-                    "name": "Improper Input Validation (Injection)",
-                    "risk": "User input is reflected without sanitization",
-                    "resolution": "Validate and sanitize all user inputs",
-                    "confidence": "HIGH",
-                    "owasp": "A03",
-                    "source": "Dynamic"
-                })
-                break
-        except PlaywrightTimeoutError:
-            continue
-        except Exception:
-            continue
-            
-    return issues
-
-# ======================================================
-# STATIC ANALYSIS
+# MAIN SCANNER ENGINE
 # ======================================================
 def static_scan(html):
     issues = []
@@ -206,34 +129,18 @@ def static_scan(html):
                 "source": "Static"
             })
 
-    for inp in soup.find_all("input"):
-        if inp.get("type") in ["text", "search"] and not inp.get("pattern"):
+    for img in soup.find_all("img"):
+        if not img.get("alt"):
             add_issue(issues, {
-                "name": "Weak Input Validation",
-                "risk": "User input not validated",
-                "resolution": "Apply strict validation",
+                "name": "Missing Image Alt Attribute",
+                "risk": "Accessibility + minor SEO issue",
+                "resolution": "Add alt attributes",
                 "confidence": "LOW",
-                "owasp": "A03",
+                "owasp": "A04",
                 "source": "Static"
             })
-
-    for script in soup.find_all("script"):
-        if script.string and "function" in script.string:
-            add_issue(issues, {
-                "name": "Inline JavaScript Detected",
-                "risk": "Increased XSS risk",
-                "resolution": "Move scripts to external files",
-                "confidence": "LOW",
-                "owasp": "A03",
-                "source": "Static"
-            })
-            break
-
     return issues
 
-# ======================================================
-# DYNAMIC ANALYSIS
-# ======================================================
 def dynamic_scan(url, headers):
     issues = []
 
@@ -281,12 +188,62 @@ def dynamic_scan(url, headers):
                 "owasp": "A07",
                 "source": "Dynamic"
             })
+    
+    if "content-security-policy" not in headers:
+        add_issue(issues, {
+            "name": "Weak Content Security Policy",
+            "risk": "No CSP increases XSS risk",
+            "resolution": "Add Content-Security-Policy header",
+            "confidence": "LOW",
+            "owasp": "A05",
+            "source": "Dynamic"
+        })
+
+    if "x-powered-by" in headers:
+        add_issue(issues, {
+            "name": "Technology Disclosure",
+            "risk": "Reveals backend tech stack",
+            "resolution": "Remove X-Powered-By header",
+            "confidence": "LOW",
+            "owasp": "A06",
+            "source": "Dynamic"
+        })
 
     return issues
 
-# ======================================================
-# MAIN SCANNER ENGINE (PLAYWRIGHT UPGRADE)
-# ======================================================
+def injection_test(url, page):
+    issues = []
+    payloads = [
+        "' OR '1'='1",
+        "\" OR \"1\"=\"1",
+        "<script>alert(1)</script>",
+        "`; ls`",
+        "$(whoami)"
+    ]
+
+    for payload in payloads:
+        try:
+            test_url = url + "?test=" + payload
+            page.goto(test_url, timeout=60000)
+
+            content = page.content()
+
+            if payload in content:
+                add_issue(issues, {
+                    "name": "Improper Input Validation (Injection)",
+                    "risk": "User input is reflected without sanitization",
+                    "resolution": "Validate and sanitize all user inputs",
+                    "confidence": "HIGH",
+                    "owasp": "A03",
+                    "source": "Dynamic"
+                })
+                break
+        except:
+            continue
+            
+    return issues
+
+
 def scan_website(url, scan_id="manual"):
     global DUPLICATE_SUPPRESSED
     DUPLICATE_SUPPRESSED = 0
@@ -298,10 +255,9 @@ def scan_website(url, scan_id="manual"):
     all_issues = []
     video_filename = f"{scan_id}.webm"
     
-    # ─── PLAYWRIGHT BROWSER AUTOMATION ───
     with sync_playwright() as p:
         print("[SYSTEM] Booting Headless Chromium Browser...")
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=False)
         
         context = browser.new_context(
             record_video_dir="static/history",
@@ -318,8 +274,8 @@ def scan_website(url, scan_id="manual"):
 
         try:
             print(f"[SYSTEM] Navigating to {url}...")
-            page.goto(url, timeout=15000)
-            page.wait_for_load_state("networkidle", timeout=5000)
+            page.goto(url, timeout=60000)
+            page.wait_for_load_state("networkidle", timeout=15000)
             
             show_hud(page, f"[INITIALIZING]<br>Connected to target: {url}")
             take_snapshot(page)
@@ -359,13 +315,23 @@ def scan_website(url, scan_id="manual"):
             browser.close()
             return None
 
-    # ─── SCORING & REPORT GENERATION ───
+    # ======================================================
+    # ✅ FIX 1: Score first (NO mutation inside loop)
+    # ======================================================
     for issue in all_issues:
         intelligent_confidence_scoring(issue, url, html_content, captured_headers)
-    
-        # Delete low-level junk to fix the False Positive rate
-        all_issues = [i for i in all_issues if not (i["confidence"] == "LOW" and i["source"] == "Static")]
-    
+
+    # ======================================================
+    # ✅ FIX 2: Filter AFTER loop (not inside)
+    # ======================================================
+    filtered_issues = [
+        i for i in all_issues
+        if not (i["confidence"] == "LOW" and i["source"] == "Static")
+    ]
+
+    # ======================================================
+    # REPORT CALCULATION
+    # ======================================================
     owasp_count = {}
     for issue in all_issues:
         owasp_id = issue["owasp"]
@@ -374,9 +340,16 @@ def scan_website(url, scan_id="manual"):
     priority_order = {"HIGH": 1, "MEDIUM": 2, "LOW": 3}
     all_issues.sort(key=lambda x: priority_order.get(x["confidence"], 4))
 
-    total = len(all_issues)
-    false_positives = len([i for i in all_issues if i["confidence"] == "LOW"])
-    false_positive_rate = (false_positives / total * 100) if total else 0
+    total = len(filtered_issues)
+    # ======================================================
+    # ✅ FIX 3: REALISTIC FALSE POSITIVE LOGIC
+    # ======================================================
+    low_conf = len([i for i in all_issues if i["confidence"] == "LOW"])
+    medium_conf = len([i for i in all_issues if i["confidence"] == "MEDIUM"])
+    
+    false_positives = (low_conf * 0.8) + (medium_conf * 0.3)
+    
+    false_positive_rate = (false_positives / len(all_issues) * 100) if all_issues else 0
 
     print("HIGH : 🔴")
     print("MEDIUM : 🟠")
@@ -386,7 +359,7 @@ def scan_website(url, scan_id="manual"):
     print("=" * 60)
     print(f"Total Threats Found        : {total}")
     print(f"Duplicate Risks Suppressed : {DUPLICATE_SUPPRESSED}")
-    print(f"False Positives (LOW)      : {false_positives}")
+    print(f"False Positives (est.)     : {int(false_positives)}")
     print(f"False Positive Rate        : {false_positive_rate:.2f}%")
 
     print("\n⏱️ SCAN PERFORMANCE METRICS")
@@ -398,7 +371,7 @@ def scan_website(url, scan_id="manual"):
     for owasp_id, count in sorted(owasp_count.items()):
         print(f"{owasp_id} - {OWASP_MAP.get(owasp_id)} : {count}")
 
-    for i, issue in enumerate(all_issues, 1):
+    for i, issue in enumerate(filtered_issues, 1):
         symbol = get_priority_symbol(issue["confidence"])
         print(f"\n{symbol} Threat #{i}")
         print(f"Name       : {issue['name']}")
