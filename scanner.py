@@ -257,7 +257,7 @@ def scan_website(url, scan_id="manual"):
     
     with sync_playwright() as p:
         print("[SYSTEM] Booting Headless Chromium Browser...")
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
         
         context = browser.new_context(
             record_video_dir="static/history",
