@@ -12,6 +12,11 @@ import html
 import urllib.request
 import urllib.error
 from dotenv import load_dotenv
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 
 # Load environment variables from .env file
 load_dotenv()
@@ -35,7 +40,6 @@ CORS(app)
 LAST_REPORT_RAW = ""
 HISTORY_FILE = "history.json"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 # ── Ensure Storage Directories Exist ────────────────────────
 os.makedirs(os.path.join("static", "history"), exist_ok=True)
@@ -204,43 +208,54 @@ def build_email_pdf(report_text, ai_text=""):
     return buf.read()
 
 
-def send_report_email_brevo(receiver_email, subject, report_text, ai_text="", pdf_bytes=None):
-    api_key = os.getenv("BREVO_API_KEY", "").strip()
-    if not api_key:
-        raise RuntimeError("BREVO_API_KEY is not configured on the server.")
+def send_report_email_gmail(receiver_email, subject, report_text, ai_text="", pdf_bytes=None):
+    sender_email = os.getenv("GMAIL_SENDER_EMAIL", "").strip()
+    app_password = os.getenv("GMAIL_APP_PASSWORD", "").strip()
+    sender_name = os.getenv("GMAIL_SENDER_NAME", "Sentinel Scanner").strip()
 
-    sender_name = os.getenv("BREVO_SENDER_NAME", "Sentinel Scanner")
-
-    brevo_sender = os.getenv("BREVO_SENDER_EMAIL", "").strip()
-    if not brevo_sender:
-        raise RuntimeError("BREVO_SENDER_EMAIL is not configured on the server.")
+    if not sender_email:
+        raise RuntimeError("GMAIL_SENDER_EMAIL is not configured on the server.")
+    if not app_password:
+        raise RuntimeError("GMAIL_APP_PASSWORD is not configured on the server.")
 
     ai_section = f"\n\nAI Guidance:\n{ai_text}" if ai_text else ""
     email_text = (
-        f"Scanner shared from: {brevo_sender}\n"
+        f"Scanner shared from: {sender_email}\n"
         f"\nSecurity report:\n{report_text}{ai_section}\n"
     )
 
-    payload = {
-        "sender": {"name": sender_name, "email": brevo_sender},
-        "to": [{"email": receiver_email}],
-        "replyTo": {"email": brevo_sender},
-        "subject": subject,
-        "textContent": email_text
-    }
+    # Create standard MIME multipart message
+    msg = MIMEMultipart()
+    if sender_name:
+        msg["From"] = f"{sender_name} <{sender_email}>"
+    else:
+        msg["From"] = sender_email
+    msg["To"] = receiver_email
+    msg["Subject"] = subject
 
+    # Attach the body text
+    msg.attach(MIMEText(email_text, "plain"))
+
+    # Attach PDF if present
     if pdf_bytes:
-        payload["attachment"] = [{
-            "name": "Sentinel_Security_Report.pdf",
-            "content": base64.b64encode(pdf_bytes).decode("utf-8")
-        }]
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(pdf_bytes)
+        encoders.encode_base64(part)
+        part.add_header(
+            "Content-Disposition",
+            'attachment; filename="Sentinel_Security_Report.pdf"'
+        )
+        msg.attach(part)
 
-    return _http_json_post(
-        BREVO_API_URL,
-        payload,
-        headers={"api-key": api_key},
-        timeout=30
-    )
+    # Connect to Google's SMTP server and send
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 587
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.starttls()
+        server.login(sender_email, app_password)
+        server.send_message(msg)
+
+    return {"status": "sent"}
 
 
 # ── Colour Palette (PDF) ────────────────────────────────────
@@ -342,11 +357,10 @@ def share_email():
 
     try:
         pdf_bytes = build_email_pdf(report_text, ai_text)
-        resp = send_report_email_brevo(receiver_email, subject, report_text, ai_text, pdf_bytes=pdf_bytes)
+        resp = send_report_email_gmail(receiver_email, subject, report_text, ai_text, pdf_bytes=pdf_bytes)
         return jsonify({"status": "success", "provider_response": resp})
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", errors="ignore") if hasattr(e, "read") else str(e)
-        return jsonify({"error": f"Email service error ({e.code}): {detail}"}), 502
+    except smtplib.SMTPException as smtp_err:
+        return jsonify({"error": f"SMTP / Gmail service error: {str(smtp_err)}"}), 502
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

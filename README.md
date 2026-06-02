@@ -16,9 +16,9 @@ A `.env` file has been created in the project root. Fill in your actual API keys
 ```env
 # .env file (fill in your actual values)
 GROQ_API_KEY=your_groq_api_key_here
-BREVO_API_KEY=your_brevo_api_key_here
-BREVO_SENDER_EMAIL=verified-sender@yourdomain.com
-BREVO_SENDER_NAME=Sentinel Scanner
+GMAIL_SENDER_EMAIL=your-gmail-address@gmail.com
+GMAIL_APP_PASSWORD=your-google-app-password
+GMAIL_SENDER_NAME=Sentinel Scanner
 ```
 
 ### Step 3: Run the Application
@@ -39,15 +39,12 @@ The app will run on `http://127.0.0.1:5001`
 3. Create a new API key
 4. Copy and paste into `.env` as `GROQ_API_KEY=`
 
-### Brevo API Key:
-1. Visit https://app.brevo.com/settings/account/api
-2. Generate API key in SMTP/API section
-3. Copy and paste into `.env` as `BREVO_API_KEY=`
-
-### Brevo Verified Sender:
-1. Visit https://app.brevo.com/senders
-2. Verify a sender email address
-3. Copy and paste into `.env` as `BREVO_SENDER_EMAIL=`
+### Google App Password:
+1. Enable **2-Step Verification** on your Google Account (Security settings).
+2. Go to the **App passwords** section in your Google Account Security settings.
+3. Generate a new app password (select 'Mail' or 'Other' and name it 'Sentinel').
+4. Copy the generated 16-character password and paste it into `.env` as `GMAIL_APP_PASSWORD=`.
+5. Enter your Gmail address in `.env` as `GMAIL_SENDER_EMAIL=`.
 
 ---
 
@@ -72,10 +69,9 @@ The app will run on `http://127.0.0.1:5001`
 ## Email Sharing Workflow
 
 1. Click "Mail It" from the 3-dot menu
-2. Enter sender email (used as reply-to address)
-3. Enter receiver email (destination)
-4. System generates PDF report and sends via Brevo
-5. Each sending can use different sender/receiver pairs
+2. Enter receiver email (destination)
+3. System generates PDF report and sends it using Gmail SMTP using the configured Google App Password
+4. The scan details and the PDF attachment are delivered to the recipient
 
 ---
 
@@ -93,9 +89,8 @@ The app will run on `http://127.0.0.1:5001`
 | Error | Solution |
 |-------|----------|
 | "GROQ_API_KEY is not configured" | Check `.env` file has correct GROQ_API_KEY value |
-| "BREVO_API_KEY is not configured" | Check `.env` file has correct BREVO_API_KEY value |
-| "BREVO_SENDER_EMAIL is required" | Verify sender email is added to `.env` and verified in Brevo |
-| Email fails to send | Check BREVO_SENDER_EMAIL is a verified sender in Brevo account |
+| "GMAIL_SENDER_EMAIL or GMAIL_APP_PASSWORD is not configured" | Check `.env` file has correct values |
+| Email fails to send / SMTP error | Ensure GMAIL_APP_PASSWORD is correct and 2-Step Verification is enabled on the Gmail account |
 | App won't start | Ensure `python-dotenv` is installed: `pip install python-dotenv` |
 
 ---
@@ -107,7 +102,7 @@ The app will run on `http://127.0.0.1:5001`
 	- Returns vulnerability explanation + fix advice + priority order.
 
 - 3-dot share menu on scanner and history cards:
-	- Mail it to user (popup asks sender + receiver email, sends via Brevo API)
+	- Mail it to user (popup asks receiver email, sends via Google App Password / SMTP)
 	- Mail now includes attached PDF report (not text-only)
 	- Download log in system (`.txt`)
 	- Share to WhatsApp
